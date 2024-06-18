@@ -13,10 +13,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define('REQUEST_THROTTLE', 2.0); // Number of seconds permitted between each hit from specified user agents
 
-// Array of user agents to throttle
+// Array of user agents to throttle (add whatever)
 $user_agents_to_throttle = array(
 	'facebookexternalhit',
-	'Python/3.10 aiohttp/3.9.3',
+	//'Python/3.10 aiohttp/3.9.3',
 );
 
 /**
