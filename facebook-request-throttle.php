@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Facebook Request Throttle
  * Description: Limits the request frequency from Facebook's web crawler.
- * Version: 1.0
+ * Version: 2.0
  * Author: Nadim Tuhin
  * Author URI: https://nadimtuhin.com
  */
@@ -22,8 +22,6 @@ define('FACEBOOK_REQUEST_THROTTLE', 2.0); // Number of seconds permitted between
 function nt_isRequestFromFacebook() {
     return !empty($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'facebookexternalhit') !== false;
 }
-
-// ... [unchanged code above]
 
 /**
  * Get the last access time of Facebook's web crawler
