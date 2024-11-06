@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 
-define('FACEBOOK_REQUEST_THROTTLE', 2.0); // Number of seconds permitted between each hit from facebookexternalhit
+define('FACEBOOK_REQUEST_THROTTLE', 60.0); // Number of seconds (60) permitted between each hit from meta-externalagent
 
 /**
  * Check if the request is from Facebook's web crawler
@@ -20,7 +20,7 @@ define('FACEBOOK_REQUEST_THROTTLE', 2.0); // Number of seconds permitted between
  * @return bool
  */
 function nt_isRequestFromFacebook() {
-    return !empty($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'facebookexternalhit') !== false;
+    return !empty($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'meta-externalagent') !== false;
 }
 
 /**
