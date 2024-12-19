@@ -7,14 +7,14 @@
  *
  * @package   SocialBotThrottle
  * @author    Nadim Tuhin
- * @version   3.0
+ * @version   3.1-rc
  * @link      https://nadimtuhin.com
  * @license   GPL-2.0+
  *
  * @wordpress-plugin
  * Plugin Name: Social Bot Request Throttle
  * Description: Limits the request frequency from various social media web crawlers.
- * Version:     2.4
+ * Version:     3.1-rc
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
  */
@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('SBRT_VERSION')) {
-    define('SBRT_VERSION', '2.4');
+    define('SBRT_VERSION', '3.1-rc');
 }
 
 if (!defined('SBRT_PLUGIN_DIR')) {

@@ -37,7 +37,14 @@ function nt_sbrt_create_log_table() {
     ) $charset_collate;";
     
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
+    $result = dbDelta($sql);
+    
+    if (is_wp_error($result)) {
+        error_log('SBRT: Failed to create log table - ' . $result->get_error_message());
+        return false;
+    }
+    
+    return true;
 }
 
 // Drop table on plugin deactivation
