@@ -1,20 +1,42 @@
 <?php
 
-add_action('init', 'nt_sbrt_social_bot_throttle_init');
+/**
+ * Social Bot Throttle Settings Page
+ *
+ * @package Social_Bot_Throttle
+ * @since 2.4
+ */
 
-// Initialize plugin
-function nt_sbrt_social_bot_throttle_init() {
-    add_action('admin_menu', 'nt_sbrt_add_admin_menu');
-    add_action('admin_init', 'nt_sbrt_register_settings');
-    add_action('admin_enqueue_scripts', 'nt_sbrt_admin_styles');
-    add_action('wp_ajax_sbrt_test_bot', 'nt_sbrt_test_bot_ajax');
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
 }
 
-// Add menu item
+add_action( 'init', 'nt_sbrt_social_bot_throttle_init' );
+
+/**
+ * Initialize plugin settings
+ *
+ * @since 2.4
+ * @return void
+ */
+function nt_sbrt_social_bot_throttle_init() {
+    add_action( 'admin_menu', 'nt_sbrt_add_admin_menu' );
+    add_action( 'admin_init', 'nt_sbrt_register_settings' );
+    add_action( 'admin_enqueue_scripts', 'nt_sbrt_admin_styles' );
+    add_action( 'wp_ajax_sbrt_test_bot', 'nt_sbrt_test_bot_ajax' );
+}
+
+/**
+ * Add menu item to WordPress admin
+ *
+ * @since 2.4
+ * @return void
+ */
 function nt_sbrt_add_admin_menu() {
     add_options_page(
-        'Social Bot Throttle Settings',
-        'Social Bot Throttle',
+        esc_html__( 'Social Bot Throttle Settings', 'social-bot-throttle' ),
+        esc_html__( 'Social Bot Throttle', 'social-bot-throttle' ),
         'manage_options',
         'social-bot-throttle',
         'nt_sbrt_settings_page'
@@ -24,62 +46,74 @@ function nt_sbrt_add_admin_menu() {
 /**
  * Sanitize custom sites array
  *
- * @param array $sites Array of custom site settings
- * @return array Sanitized settings
+ * @param array $sites Array of custom site settings.
+ * @return array Sanitized settings.
+ * @since 2.4
  */
-function nt_sbrt_sanitize_custom_sites($sites) {
-    if (!is_array($sites)) {
+function nt_sbrt_sanitize_custom_sites( $sites ) {
+    if ( ! is_array( $sites ) ) {
         return array();
     }
     
     $sanitized = array();
-    foreach ($sites as $site) {
-        if (empty($site['name']) || empty($site['agents'])) {
+    foreach ( $sites as $site ) {
+        if ( empty( $site['name'] ) || empty( $site['agents'] ) ) {
             continue;
         }
         
         $sanitized[] = array(
-            'name' => sanitize_text_field($site['name']),
-            'agents' => sanitize_textarea_field($site['agents']), 
-            'throttle' => floatval($site['throttle']),
-            'throttle_images' => isset($site['throttle_images']) ? $site['throttle_images'] : '0'
+            'name'            => sanitize_text_field( $site['name'] ),
+            'agents'          => sanitize_textarea_field( $site['agents'] ), 
+            'throttle'        => floatval( $site['throttle'] ),
+            'throttle_images' => isset( $site['throttle_images'] ) ? $site['throttle_images'] : '0'
         );
     }
     return $sanitized;
 }
 
-// Register settings
+/**
+ * Register plugin settings
+ *
+ * @since 2.4
+ * @return void
+ */
 function nt_sbrt_register_settings() {
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle', 'floatval');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_agents', 'sanitize_textarea_field');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle_images', 'sanitize_text_field');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_throttle', 'floatval');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_agents', 'sanitize_textarea_field');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_throttle_images', 'sanitize_text_field');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle', 'floatval');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_agents', 'sanitize_textarea_field');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle_images', 'sanitize_text_field');
-    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_custom_sites', 'nt_sbrt_sanitize_custom_sites');
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle', 'floatval' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_agents', 'sanitize_textarea_field' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle_images', 'sanitize_text_field' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_throttle', 'floatval' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_agents', 'sanitize_textarea_field' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_throttle_images', 'sanitize_text_field' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle', 'floatval' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_agents', 'sanitize_textarea_field' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle_images', 'sanitize_text_field' );
+    register_setting( 'nt_sbrt_social_bot_throttle', 'nt_sbrt_custom_sites', 'nt_sbrt_sanitize_custom_sites' );
 }
 
-// Add admin styles
-function nt_sbrt_admin_styles($hook) {
-    if ($hook !== 'settings_page_social-bot-throttle') {
+/**
+ * Add admin styles
+ *
+ * @param string $hook The current admin page.
+ * @return void
+ * @since 2.4
+ */
+function nt_sbrt_admin_styles( $hook ) {
+    if ( 'settings_page_social-bot-throttle' !== $hook ) {
         return;
     }
     
-    wp_enqueue_style('wp-color-picker');
-    wp_enqueue_script('wp-color-picker');
+    wp_enqueue_style( 'wp-color-picker' );
+    wp_enqueue_script( 'wp-color-picker' );
     
-    // Add custom styles
+    // Add custom styles.
     wp_enqueue_style(
         'sbrt-admin-styles',
         SBRT_PLUGIN_URL . 'assets/css/admin-styles.css',
-        [],
+        array(),
         SBRT_VERSION
     );
 
-    // Add inline styles for checkbox and button alignment
+    // Add inline styles for checkbox and button alignment.
     $custom_css = "
         .sbrt-field input[type='checkbox'] {
             margin-top: 2px;
@@ -95,38 +129,43 @@ function nt_sbrt_admin_styles($hook) {
             margin-bottom: 10px;
         }
     ";
-    wp_add_inline_style('sbrt-admin-styles', $custom_css);
+    wp_add_inline_style( 'sbrt-admin-styles', $custom_css );
 }
 
-// AJAX handler for bot testing
+/**
+ * AJAX handler for bot testing
+ *
+ * @since 2.4
+ * @return void
+ */
 function nt_sbrt_test_bot_ajax() {
-    check_ajax_referer('sbrt_test_bot', 'nonce');
+    check_ajax_referer( 'sbrt_test_bot', 'nonce' );
 
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( 'Unauthorized' );
     }
 
-    $user_agent = sanitize_text_field($_POST['user_agent']);
+    $user_agent = sanitize_text_field( $_POST['user_agent'] );
     
     $args = array(
         'user-agent' => $user_agent,
-        'timeout' => 30,
+        'timeout'    => 30,
     );
 
-    $response = wp_remote_get(home_url(), $args);
+    $response = wp_remote_get( home_url(), $args );
 
-    if (is_wp_error($response)) {
-        wp_send_json_error(array(
-            'status' => 500,
-            'message' => $response->get_error_message()
-        ));
+    if ( is_wp_error( $response ) ) {
+        wp_send_json_error( array(
+            'status'  => 500,
+            'message' => $response->get_error_message(),
+        ) );
     }
 
-    wp_send_json_success(array(
-        'status' => wp_remote_retrieve_response_code($response),
-        'headers' => wp_remote_retrieve_headers($response),
-        'body' => wp_remote_retrieve_body($response)
-    ));
+    wp_send_json_success( array(
+        'status'  => wp_remote_retrieve_response_code( $response ),
+        'headers' => wp_remote_retrieve_headers( $response ),
+        'body'    => wp_remote_retrieve_body( $response ),
+    ) );
 }
 
 /**
