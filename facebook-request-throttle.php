@@ -19,12 +19,12 @@ define('FACEBOOK_REQUEST_THROTTLE', 60.0);
  * 
  * @return bool True if the request is from Facebook's crawler, false otherwise.
  */
-function nt_isRequestFromFacebook() {
-    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    $facebookUserAgents = ['meta-externalagent', 'facebookexternalhit'];
+function nt_is_request_from_facebook() {
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $facebook_user_agents = ['meta-externalagent', 'facebookexternalhit'];
     
-    foreach ($facebookUserAgents as $agent) {
-        if (strpos($userAgent, $agent) !== false) {
+    foreach ($facebook_user_agents as $agent) {
+        if (strpos($user_agent, $agent) !== false) {
             return true;
         }
     }
@@ -36,12 +36,12 @@ function nt_isRequestFromFacebook() {
  * 
  * @return bool 
  */
-function nt_isImageRequest() {
-    $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-    $fileExtension = strtolower(pathinfo($requestPath, PATHINFO_EXTENSION));
-    $allowedImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+function nt_is_image_request() {
+    $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $file_extension = strtolower(pathinfo($request_path, PATHINFO_EXTENSION));
+    $allowed_image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
     
-    return in_array($fileExtension, $allowedImageExtensions, true);
+    return in_array($file_extension, $allowed_image_extensions, true);
 }
 
 /**
@@ -49,41 +49,41 @@ function nt_isImageRequest() {
  * 
  * @return float|null
  */
-function nt_getLastAccessTime() {
+function nt_get_last_access_time() {
     return get_transient('nt_facebook_last_access_time');
 }
 
 /**
  * Set the last access time of Facebook's web crawler
  * 
- * @param float $currentTime
+ * @param float $current_time
  * @return bool
  */
-function nt_setLastAccessTime($currentTime) {
+function nt_set_last_access_time($current_time) {
     // Set the transient to last just slightly longer than the throttle time
-    return set_transient('nt_facebook_last_access_time', $currentTime, FACEBOOK_REQUEST_THROTTLE + 1);
+    return set_transient('nt_facebook_last_access_time', $current_time, FACEBOOK_REQUEST_THROTTLE + 1);
 }
 
 /**
  * Throttle Facebook crawler requests to prevent overload
  */
-function nt_facebookRequestThrottle() {
+function nt_facebook_request_throttle() {
     // Skip throttling for image requests
-    if (nt_isImageRequest()) {
+    if (nt_is_image_request()) {
         return;
     }
 
-    $lastAccessTime = nt_getLastAccessTime();
-    $currentTime = microtime(true);
+    $last_access_time = nt_get_last_access_time();
+    $current_time = microtime(true);
 
     // Check if we need to throttle
-    if ($lastAccessTime && ($currentTime - $lastAccessTime < FACEBOOK_REQUEST_THROTTLE)) {
-        nt_sendThrottleResponse();
+    if ($last_access_time && ($current_time - $last_access_time < FACEBOOK_REQUEST_THROTTLE)) {
+        nt_send_throttle_response();
     } else {
         // Attempt to set last access time
-        if (!nt_setLastAccessTime($currentTime)) {
+        if (!nt_set_last_access_time($current_time)) {
             error_log("Failed to set last access time for Facebook web crawler.");
-            nt_sendThrottleResponse();
+            nt_send_throttle_response();
         }
     }
 }
@@ -91,13 +91,13 @@ function nt_facebookRequestThrottle() {
 /**
  * Send throttle response with appropriate headers
  */
-function nt_sendThrottleResponse() {
+function nt_send_throttle_response() {
     status_header(429);
     header('Retry-After: 60');
     wp_die('Too Many Requests', 'Too Many Requests', ['response' => 429]);
 }
 
 // Main logic - only run throttle check for Facebook requests
-if (nt_isRequestFromFacebook()) {
-    nt_facebookRequestThrottle();
+if (nt_is_request_from_facebook()) {
+    nt_facebook_request_throttle();
 }
