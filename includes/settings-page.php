@@ -24,10 +24,13 @@ function nt_sbrt_add_admin_menu() {
 function nt_sbrt_register_settings() {
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle', 'floatval');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_agents', 'sanitize_textarea_field');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle_images', 'sanitize_text_field');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_throttle', 'floatval');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_agents', 'sanitize_textarea_field');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_throttle_images', 'sanitize_text_field');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle', 'floatval');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_agents', 'sanitize_textarea_field');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle_images', 'sanitize_text_field');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_custom_sites', 'nt_sbrt_sanitize_custom_sites');
 }
 
@@ -95,6 +98,11 @@ function nt_sbrt_settings_page() {
                                     class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit")); ?></textarea>
                           <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                       </div>
+                      <div class="sbrt-field">
+                          <label class="sbrt-label"><?php echo esc_html__('Throttle images', 'social-bot-throttle'); ?></label>
+                          <input type="checkbox" name="nt_sbrt_facebook_throttle_images" value="1" <?php checked(get_option('nt_sbrt_facebook_throttle_images', '1') === '1', true); ?> />
+                          <p class="sbrt-help-text"><?php echo esc_html__('Allow Facebook crawler to access images.', 'social-bot-throttle'); ?></p>
+                      </div>
                       <button type="button" class="button button-secondary sbrt-test-btn" data-bot="facebook">
                           <?php echo esc_html__('Test Facebook Throttle', 'social-bot-throttle'); ?>
                       </button>
@@ -120,6 +128,11 @@ function nt_sbrt_settings_page() {
                                     class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_twitter_agents', "Twitterbot")); ?></textarea>
                           <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                       </div>
+                      <div class="sbrt-field">
+                          <label class="sbrt-label"><?php echo esc_html__('Throttle images', 'social-bot-throttle'); ?></label>
+                          <input type="checkbox" name="nt_sbrt_twitter_throttle_images" value="1" <?php checked(get_option('nt_sbrt_twitter_throttle_images', '1') === '1', true); ?> />
+                          <p class="sbrt-help-text"><?php echo esc_html__('Allow Twitter crawler to access images.', 'social-bot-throttle'); ?></p>
+                      </div>
                       <button type="button" class="button button-secondary sbrt-test-btn" data-bot="twitter">
                           <?php echo esc_html__('Test Twitter Throttle', 'social-bot-throttle'); ?>
                       </button>
@@ -144,6 +157,11 @@ function nt_sbrt_settings_page() {
                           <textarea name="nt_sbrt_pinterest_agents"
                                     class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_pinterest_agents', "Pinterest")); ?></textarea>
                           <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                      </div>
+                      <div class="sbrt-field">
+                          <label class="sbrt-label"><?php echo esc_html__('Throttle images', 'social-bot-throttle'); ?></label>
+                          <input type="checkbox" name="nt_sbrt_pinterest_throttle_images" value="1" <?php checked(get_option('nt_sbrt_pinterest_throttle_images', '1') === '1', true); ?> />
+                          <p class="sbrt-help-text"><?php echo esc_html__('Allow Pinterest crawler to access images.', 'social-bot-throttle'); ?></p>
                       </div>
                       <button type="button" class="button button-secondary sbrt-test-btn" data-bot="pinterest">
                           <?php echo esc_html__('Test Pinterest Throttle', 'social-bot-throttle'); ?>
@@ -186,6 +204,11 @@ function nt_sbrt_settings_page() {
                                             class="large-text code"
                                             rows="4"><?php echo esc_textarea($site['agents']); ?></textarea>
                                   <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                              </div>
+                              <div class="sbrt-field">
+                                  <label><?php echo esc_html__('Throttle images', 'social-bot-throttle'); ?></label>
+                                  <input type="checkbox" name="nt_sbrt_custom_sites[<?php echo $index; ?>][throttle_images]" value="1" <?php checked(isset($site['allow_images']) && $site['allow_images'] === '1', true); ?> />
+                                  <p class="sbrt-help-text"><?php echo esc_html__('Allow this custom site to access images.', 'social-bot-throttle'); ?></p>
                               </div>
                               <button type="button" class="button button-secondary sbrt-test-btn" data-bot="custom-<?php echo $index; ?>">
                                   <?php echo esc_html__('Test Bot Throttle', 'social-bot-throttle'); ?>
@@ -235,6 +258,11 @@ function nt_sbrt_settings_page() {
                                 rows="4"></textarea>
                       <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                   </div>
+                  <div class="sbrt-field">
+                      <label><?php echo esc_html__('Throttle images', 'social-bot-throttle'); ?></label>
+                      <input type="checkbox" name="nt_sbrt_custom_sites[INDEX][throttle_images]" value="1" />
+                      <p class="sbrt-help-text"><?php echo esc_html__('Allow this custom site to access images.', 'social-bot-throttle'); ?></p>
+                  </div>
                   <button type="button" class="button button-secondary sbrt-test-btn" data-bot="custom-INDEX">
                       <?php echo esc_html__('Test Bot Throttle', 'social-bot-throttle'); ?>
                   </button>
@@ -268,7 +296,7 @@ function nt_sbrt_settings_page() {
 
       function updateSiteNumbers() {
           $('.sbrt-custom-site').each(function(index) {
-              $(this).find('input, textarea').each(function() {
+              $(this).find('input, textarea, select').each(function() {
                   var name = $(this).attr('name');
                   $(this).attr('name', name.replace(/\[\d+\]/, '[' + index + ']'));
               });
