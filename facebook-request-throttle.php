@@ -269,4 +269,4 @@ function nt_sbrt_init_throttling() {
     nt_sbrt_send_throttle_response($bot_config);
 }
 
-nt_sbrt_init_throttling();
+add_action('init', 'nt_sbrt_init_throttling', 10);
