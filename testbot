@@ -1,0 +1,27 @@
+# URL of your WordPress site
+URL="http://pathao-career.local/"
+
+# User agent strings for Facebook's web crawlers
+USER_AGENT_FACEBOOK="facebookexternalhit"
+USER_AGENT_META="meta-externalagent"
+
+# Number of requests to send
+REQUEST_COUNT=5
+
+# Time interval between requests
+SLEEP_INTERVAL=1
+
+# Function to send requests
+send_requests() {
+    for ((i=1; i<=REQUEST_COUNT; i++)); do
+        echo "Sending request $i with USER_AGENT: $1..."
+        RESPONSE=$(curl -s -A "$1" -w "%{http_code}" -o /dev/null "$URL")
+        echo "Response Code: $RESPONSE"
+        echo "---"
+        sleep $SLEEP_INTERVAL
+    done
+}
+
+# Run the tests
+send_requests "$USER_AGENT_FACEBOOK"
+send_requests "$USER_AGENT_META"
