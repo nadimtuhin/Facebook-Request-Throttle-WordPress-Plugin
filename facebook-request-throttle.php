@@ -15,16 +15,17 @@ if (!defined('ABSPATH')) {
 define('FACEBOOK_REQUEST_THROTTLE', 60.0);
 
 /**
- * Check if the request is from Facebook's web crawler
+ * Determine if the incoming request originates from Facebook's web crawler.
  * 
- * @return bool
+ * @return bool True if the request is from Facebook's crawler, false otherwise.
  */
 function nt_isRequestFromFacebook() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    return !empty($userAgent) && (
-        strpos($userAgent, 'meta-externalagent') !== false || 
-        strpos($userAgent, 'facebookexternalhit') !== false
-    );
+    $facebookUserAgents = ['meta-externalagent', 'facebookexternalhit'];
+    
+    return !empty($userAgent) && array_reduce($facebookUserAgents, function($carry, $agent) use ($userAgent) {
+        return $carry || strpos($userAgent, $agent) !== false;
+    }, false);
 }
 
 /**
