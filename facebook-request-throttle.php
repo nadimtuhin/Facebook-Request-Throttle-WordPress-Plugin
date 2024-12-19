@@ -23,9 +23,12 @@ function nt_isRequestFromFacebook() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $facebookUserAgents = ['meta-externalagent', 'facebookexternalhit'];
     
-    return !empty($userAgent) && array_reduce($facebookUserAgents, function($carry, $agent) use ($userAgent) {
-        return $carry || strpos($userAgent, $agent) !== false;
-    }, false);
+    foreach ($facebookUserAgents as $agent) {
+        if (strpos($userAgent, $agent) !== false) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -38,7 +41,7 @@ function nt_isImageRequest() {
     $fileExtension = strtolower(pathinfo($requestPath, PATHINFO_EXTENSION));
     $allowedImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
     
-    return in_array($fileExtension, $allowedImageExtensions);
+    return in_array($fileExtension, $allowedImageExtensions, true);
 }
 
 /**
@@ -58,11 +61,7 @@ function nt_getLastAccessTime() {
  */
 function nt_setLastAccessTime($currentTime) {
     // Set the transient to last just slightly longer than the throttle time
-    return set_transient(
-        'nt_facebook_last_access_time', 
-        $currentTime, 
-        FACEBOOK_REQUEST_THROTTLE + 1
-    );
+    return set_transient('nt_facebook_last_access_time', $currentTime, FACEBOOK_REQUEST_THROTTLE + 1);
 }
 
 /**
@@ -75,19 +74,17 @@ function nt_facebookRequestThrottle() {
     }
 
     $lastAccessTime = nt_getLastAccessTime();
-    $currentTime = microtime(TRUE);
+    $currentTime = microtime(true);
 
     // Check if we need to throttle
-    if (!$lastAccessTime) {
-        error_log("No last access time found.");
-    } elseif ($currentTime - $lastAccessTime < FACEBOOK_REQUEST_THROTTLE) {
+    if ($lastAccessTime && ($currentTime - $lastAccessTime < FACEBOOK_REQUEST_THROTTLE)) {
         nt_sendThrottleResponse();
-    }
-    
-    // Attempt to set last access time
-    if (!nt_setLastAccessTime($currentTime)) {
-        error_log("Failed to set last access time for Facebook web crawler.");
-        nt_sendThrottleResponse();
+    } else {
+        // Attempt to set last access time
+        if (!nt_setLastAccessTime($currentTime)) {
+            error_log("Failed to set last access time for Facebook web crawler.");
+            nt_sendThrottleResponse();
+        }
     }
 }
 
@@ -97,14 +94,10 @@ function nt_facebookRequestThrottle() {
 function nt_sendThrottleResponse() {
     status_header(429);
     header('Retry-After: 60');
-    wp_die(
-        'Too Many Requests',
-        'Too Many Requests',
-        ['response' => 429]
-    );
+    wp_die('Too Many Requests', 'Too Many Requests', ['response' => 429]);
 }
 
 // Main logic - only run throttle check for Facebook requests
 if (nt_isRequestFromFacebook()) {
-  nt_facebookRequestThrottle();
+    nt_facebookRequestThrottle();
 }
