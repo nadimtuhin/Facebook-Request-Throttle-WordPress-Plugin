@@ -253,6 +253,32 @@ function nt_sbrt_send_throttle_response($bot_config) {
     );
 }
 
+/**
+ * Throttle bot requests to prevent overload
+ * 
+ * @param array $bot_config
+ */
+function nt_sbrt_bot_request_throttle($bot_config) {
+  // Skip throttling for image requests
+  if (nt_sbrt_is_image_request()) {
+      return;
+  }
+
+  $last_access_time = nt_sbrt_get_last_access_time($bot_config['transient_key']);
+  $current_time = microtime(true);
+
+  // Check if we need to throttle
+  if ($last_access_time && ($current_time - $last_access_time < $bot_config['throttle'])) {
+    nt_sbrt_send_throttle_response($bot_config);
+  } else {
+      // Attempt to set last access time
+      if (!nt_sbrt_set_last_access_time($bot_config['transient_key'], $current_time, $bot_config['throttle'])) {
+          error_log("Failed to set last access time for bot crawler.");
+          nt_sbrt_send_throttle_response($bot_config);
+      }
+  }
+}
+
 // Initialize throttling
 function nt_sbrt_init_throttling() {
     $bot_config = nt_sbrt_identify_bot_request();
@@ -260,25 +286,7 @@ function nt_sbrt_init_throttling() {
         return;
     }
 
-    // Log allowed requests
-    if (!nt_sbrt_is_image_request() || 
-        (isset($bot_config['throttle_images']) && '1' !== $bot_config['throttle_images'])) {
-        nt_sbrt_log_throttled_request($bot_config, '', '', 'allowed');
-        return;
-    }
-    
-    if (nt_sbrt_is_image_request()) {
-        if (
-          isset($bot_config['throttle_images']) && 
-          '1' === $bot_config['throttle_images']
-          ) {
-            nt_sbrt_send_throttle_response($bot_config);
-        }
-        return;
-    }
-
-    // Send throttle response for non-image requests
-    nt_sbrt_send_throttle_response($bot_config);
+    nt_sbrt_bot_request_throttle($bot_config);
 }
 
 add_action('init', 'nt_sbrt_init_throttling', 10);
