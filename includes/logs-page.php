@@ -54,26 +54,29 @@ function nt_sbrt_logs_page() {
     ));
     
     ?>
-    <div class="wrap">
+    <div class="wrap sbrt-logs-page">
         <h1 class="wp-heading-inline"><?php _e('Social Bot Throttle Logs'); ?></h1>
         
         <?php settings_errors('sbrt_logs'); ?>
 
-        <div class="postbox">
+        <div class="postbox sbrt-stats-box">
             <div class="inside">
-                <h2><?php _e('Statistics'); ?></h2>
-                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 15px 0;">
+                <h2 class="sbrt-section-title"><?php _e('Statistics'); ?></h2>
+                <div class="stats-grid">
                     <div class="stat-box">
+                        <div class="stat-icon dashicons dashicons-chart-bar"></div>
                         <h3><?php _e('Total Requests'); ?></h3>
                         <span class="stat-number"><?php echo number_format($total_items); ?></span>
                     </div>
                     <div class="stat-box">
+                        <div class="stat-icon dashicons dashicons-yes-alt"></div>
                         <h3><?php _e('Allowed Requests'); ?></h3>
-                        <span class="stat-number" style="color: #46b450;"><?php echo number_format($allowed_count); ?></span>
+                        <span class="stat-number allowed"><?php echo number_format($allowed_count); ?></span>
                     </div>
                     <div class="stat-box">
+                        <div class="stat-icon dashicons dashicons-dismiss"></div>
                         <h3><?php _e('Denied Requests'); ?></h3>
-                        <span class="stat-number" style="color: #dc3232;"><?php echo number_format($denied_count); ?></span>
+                        <span class="stat-number denied"><?php echo number_format($denied_count); ?></span>
                     </div>
                 </div>
             </div>
@@ -83,7 +86,7 @@ function nt_sbrt_logs_page() {
             <div class="alignleft actions">
                 <form method="post" style="display: inline;">
                     <?php wp_nonce_field('delete_all_logs'); ?>
-                    <?php submit_button(__('Delete All Logs'), 'delete', 'delete_all_logs', false, array(
+                    <?php submit_button(__('Delete All Logs'), 'delete button-link-delete', 'delete_all_logs', false, array(
                         'onclick' => 'return confirm("' . esc_js(__('Are you sure you want to delete all logs? This cannot be undone.')) . '");'
                     )); ?>
                 </form>
@@ -121,68 +124,205 @@ function nt_sbrt_logs_page() {
                     </div>
                 </div>
             <?php endif; ?>
-            <table class="wp-list-table widefat fixed striped">
+            <table class="wp-list-table widefat fixed striped sbrt-logs-table">
                 <thead>
                     <tr>
-                        <th scope="col"><?php _e('Bot'); ?></th>
-                        <th scope="col"><?php _e('Request URI'); ?></th>
-                        <th scope="col"><?php _e('User Agent'); ?></th>
-                        <th scope="col"><?php _e('Status'); ?></th>
-                        <th scope="col"><?php _e('Timestamp'); ?></th>
+                        <th scope="col" class="bot-col"><?php _e('Bot'); ?></th>
+                        <th scope="col" class="uri-col"><?php _e('Request URI'); ?></th>
+                        <th scope="col" class="agent-col"><?php _e('User Agent'); ?></th>
+                        <th scope="col" class="status-col"><?php _e('Status'); ?></th>
+                        <th scope="col" class="time-col"><?php _e('Timestamp'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($logs as $log): ?>
                         <tr>
-                            <td><?php echo esc_html($log->bot_name); ?></td>
-                            <td class="column-primary">
-                                <strong><?php echo esc_html($log->request_uri); ?></strong>
-                                <button type="button" class="toggle-row"><span class="screen-reader-text"><?php _e('Show more details'); ?></span></button>
+                            <td class="bot-col"><?php echo esc_html($log->bot_name); ?></td>
+                            <td class="uri-col column-primary">
+                                <strong class="uri-text"><?php echo esc_html($log->request_uri); ?></strong>
+                                <button type="button" class="toggle-row">
+                                    <span class="screen-reader-text"><?php _e('Show more details'); ?></span>
+                                </button>
                             </td>
-                            <td><?php echo esc_html($log->user_agent); ?></td>
-                            <td>
+                            <td class="agent-col">
+                                <code class="user-agent"><?php echo esc_html($log->user_agent); ?></code>
+                            </td>
+                            <td class="status-col">
                                 <?php if (isset($log->status) && $log->status === 'allowed'): ?>
-                                    <span class="status-allowed"><?php _e('Allowed'); ?></span>
+                                    <span class="status-badge status-allowed">
+                                        <span class="dashicons dashicons-yes"></span>
+                                        <?php _e('Allowed'); ?>
+                                    </span>
                                 <?php else: ?>
-                                    <span class="status-denied"><?php _e('Denied'); ?></span>
+                                    <span class="status-badge status-denied">
+                                        <span class="dashicons dashicons-no"></span>
+                                        <?php _e('Denied'); ?>
+                                    </span>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo esc_html(get_date_from_gmt($log->timestamp, get_option('date_format') . ' ' . get_option('time_format'))); ?></td>
+                            <td class="time-col">
+                                <?php echo esc_html(get_date_from_gmt($log->timestamp, get_option('date_format') . ' ' . get_option('time_format'))); ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-            
 
         <?php endif; ?>
     </div>
 
     <style>
-        .stat-box {
-            background: #fff;
-            padding: 15px;
-            border: 1px solid #ccd0d4;
-            text-align: center;
+        .sbrt-logs-page {
+            max-width: 1200px;
+            margin: 20px auto;
         }
+
+        .sbrt-section-title {
+            color: #23282d;
+            font-size: 16px;
+            margin: 0 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sbrt-stats-box {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            box-shadow: 0 1px 1px rgba(0,0,0,.04);
+            margin-bottom: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin: 15px 0;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #646970;
+        }
+
         .stat-box h3 {
             margin: 0 0 10px;
             font-size: 14px;
+            color: #646970;
         }
+
         .stat-number {
-            font-size: 24px;
+            font-size: 28px;
+            font-weight: 600;
+            color: #1d2327;
+        }
+
+        .stat-number.allowed {
+            color: #00a32a;
+        }
+
+        .stat-number.denied {
+            color: #d63638;
+        }
+
+        .sbrt-logs-table {
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .sbrt-logs-table th {
+            background: #f8f9fa;
             font-weight: 600;
         }
+
+        .bot-col {
+            width: 15%;
+        }
+
+        .uri-col {
+            width: 25%;
+        }
+
+        .agent-col {
+            width: 30%;
+        }
+
+        .status-col {
+            width: 15%;
+        }
+
+        .time-col {
+            width: 15%;
+        }
+
+        .uri-text {
+            word-break: break-all;
+        }
+
+        .user-agent {
+            display: block;
+            padding: 4px 8px;
+            background: #f6f7f7;
+            border-radius: 4px;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge .dashicons {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+            margin-right: 4px;
+        }
+
         .status-allowed {
-            color: #46b450;
-            font-weight: 600;
+            background: #edfaef;
+            color: #00a32a;
         }
+
         .status-denied {
-            color: #dc3232;
-            font-weight: 600;
+            background: #fcf0f1;
+            color: #d63638;
         }
+
         @media screen and (max-width: 782px) {
             .stats-grid {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: 1fr;
+            }
+
+            .sbrt-logs-table th.column-primary ~ th,
+            .sbrt-logs-table td.column-primary ~ td {
+                display: none;
+            }
+
+            .sbrt-logs-table th.column-primary,
+            .sbrt-logs-table td.column-primary {
+                padding-right: 50px;
+            }
+
+            .toggle-row {
+                display: block;
             }
         }
     </style>
