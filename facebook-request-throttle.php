@@ -17,162 +17,311 @@
  * Version:     2.4
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
- * Text Domain: social-bot-throttle
- * Domain Path: /languages
- * License:     GPL-2.0+
- * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  */
 
-// If this file is called directly, abort.
-if ( ! defined( 'WPINC' ) ) {
-    die;
+if (!defined('ABSPATH')) {
+    die('We\'re sorry, but you can not directly access this file.');
 }
 
 // Define plugin constants
-define( 'SBRT_VERSION', '2.4' );
-define( 'SBRT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'SBRT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'SBRT_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+define('SBRT_VERSION', '2.4');
+define('SBRT_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('SBRT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Default throttle values
-define( 'SBRT_DEFAULT_FACEBOOK_THROTTLE', 60.0 );
-define( 'SBRT_DEFAULT_TWITTER_THROTTLE', 60.0 );
-define( 'SBRT_DEFAULT_PINTEREST_THROTTLE', 60.0 );
-define( 'SBRT_DEFAULT_CUSTOM_THROTTLE', 60.0 );
+// Default throttle values if not set in options
+define('DEFAULT_FACEBOOK_THROTTLE', 60.0);
+define('DEFAULT_TWITTER_THROTTLE', 60.0); 
+define('DEFAULT_PINTEREST_THROTTLE', 60.0);
+define('DEFAULT_CUSTOM_THROTTLE', 60.0);
 
-/**
- * Load plugin textdomain.
- *
- * @since 2.4
- */
-function sbrt_load_textdomain() {
-    load_plugin_textdomain(
-        'social-bot-throttle',
-        false,
-        dirname( SBRT_PLUGIN_BASENAME ) . '/languages/'
-    );
+// Initialize plugin
+function nt_sbrt_social_bot_throttle_init() {
+    add_action('admin_menu', 'nt_sbrt_add_admin_menu');
+    add_action('admin_init', 'nt_sbrt_register_settings');
 }
-add_action( 'plugins_loaded', 'sbrt_load_textdomain' );
+add_action('init', 'nt_sbrt_social_bot_throttle_init');
 
-/**
- * Initialize plugin
- *
- * @since 2.4
- */
-function sbrt_init() {
-    add_action( 'admin_menu', 'sbrt_add_admin_menu' );
-    add_action( 'admin_init', 'sbrt_register_settings' );
-}
-add_action( 'init', 'sbrt_init' );
-
-/**
- * Add menu item
- *
- * @since 2.4
- */
-function sbrt_add_admin_menu() {
+// Add menu item
+function nt_sbrt_add_admin_menu() {
     add_options_page(
-        __( 'Social Bot Throttle Settings', 'social-bot-throttle' ),
-        __( 'Social Bot Throttle', 'social-bot-throttle' ),
+        'Social Bot Throttle Settings',
+        'Social Bot Throttle',
         'manage_options',
         'social-bot-throttle',
-        'sbrt_render_settings_page'
+        'nt_sbrt_settings_page'
     );
 }
 
-/**
- * Register settings
- *
- * @since 2.4
- */
-function sbrt_register_settings() {
-    register_setting( 'sbrt_options', 'sbrt_facebook_throttle', 'floatval' );
-    register_setting( 'sbrt_options', 'sbrt_facebook_agents', 'sanitize_textarea_field' );
-    register_setting( 'sbrt_options', 'sbrt_twitter_throttle', 'floatval' );
-    register_setting( 'sbrt_options', 'sbrt_twitter_agents', 'sanitize_textarea_field' );
-    register_setting( 'sbrt_options', 'sbrt_pinterest_throttle', 'floatval' );
-    register_setting( 'sbrt_options', 'sbrt_pinterest_agents', 'sanitize_textarea_field' );
-    register_setting( 'sbrt_options', 'sbrt_custom_sites', 'sbrt_sanitize_custom_sites' );
+// Register settings
+function nt_sbrt_register_settings() {
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle', 'floatval');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_agents', 'sanitize_textarea_field');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_throttle', 'floatval');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_twitter_agents', 'sanitize_textarea_field');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle', 'floatval');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_agents', 'sanitize_textarea_field');
+    register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_custom_sites', 'nt_sbrt_sanitize_custom_sites');
 }
 
 /**
  * Sanitize custom sites array
- *
- * @since 2.4
- * @param array $sites Custom sites array to sanitize
- * @return array Sanitized custom sites array
  */
-function sbrt_sanitize_custom_sites( $sites ) {
-    if ( ! is_array( $sites ) ) {
-        return array();
+function nt_sbrt_sanitize_custom_sites($sites) {
+    if (!is_array($sites)) {
+        return [];
     }
     
-    $sanitized = array();
-    foreach ( $sites as $site ) {
-        if ( ! empty( $site['name'] ) && ! empty( $site['agents'] ) ) {
-            $sanitized[] = array(
-                'name' => sanitize_text_field( $site['name'] ),
-                'agents' => sanitize_textarea_field( $site['agents'] ),
-                'throttle' => floatval( $site['throttle'] )
-            );
+    $sanitized = [];
+    foreach ($sites as $site) {
+        if (!empty($site['name']) && !empty($site['agents'])) {
+            $sanitized[] = [
+                'name' => sanitize_text_field($site['name']),
+                'agents' => sanitize_textarea_field($site['agents']),
+                'throttle' => floatval($site['throttle'])
+            ];
         }
     }
     return $sanitized;
 }
 
 /**
- * Get bot configurations
+ * Renders the settings page HTML
  *
  * @since 2.4
- * @return array Bot configurations
+ * @return void
  */
-function sbrt_get_bot_config() {
-    $custom_sites = get_option( 'sbrt_custom_sites', array() );
-    
-    $config = array(
-        'facebook' => array(
-            'agents' => array_filter( explode( "\n", get_option( 'sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit" ) ) ),
-            'throttle' => floatval( get_option( 'sbrt_facebook_throttle', SBRT_DEFAULT_FACEBOOK_THROTTLE ) ),
-            'transient_key' => 'sbrt_facebook_last_access'
-        ),
-        'twitter' => array(
-            'agents' => array_filter( explode( "\n", get_option( 'sbrt_twitter_agents', "Twitterbot" ) ) ),
-            'throttle' => floatval( get_option( 'sbrt_twitter_throttle', SBRT_DEFAULT_TWITTER_THROTTLE ) ),
-            'transient_key' => 'sbrt_twitter_last_access'
-        ),
-        'pinterest' => array(
-            'agents' => array_filter( explode( "\n", get_option( 'sbrt_pinterest_agents', "Pinterest" ) ) ),
-            'throttle' => floatval( get_option( 'sbrt_pinterest_throttle', SBRT_DEFAULT_PINTEREST_THROTTLE ) ),
-            'transient_key' => 'sbrt_pinterest_last_access'
-        )
-    );
+function nt_sbrt_settings_page() {
+    $custom_sites = get_option('nt_sbrt_custom_sites', []);
+    ?>
+    <div class="wrap">
+        <h1><?php echo esc_html__('Social Bot Throttle Settings', 'social-bot-throttle'); ?></h1>
+        <div class="notice notice-info">
+            <p><?php echo esc_html__('Configure throttle times and user agents for different social media crawlers.', 'social-bot-throttle'); ?></p>
+        </div>
+        
+        <form method="post" action="options.php">
+            <?php
+            settings_fields('nt_sbrt_social_bot_throttle');
+            do_settings_sections('nt_sbrt_social_bot_throttle');
+            ?>
+            <div class="card">
+                <h2><?php echo esc_html__('Crawler Settings', 'social-bot-throttle'); ?></h2>
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Facebook Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <input type="number" 
+                                   class="regular-text" 
+                                   step="0.1" 
+                                   min="0"
+                                   name="nt_sbrt_facebook_throttle" 
+                                   value="<?php echo esc_attr(get_option('nt_sbrt_facebook_throttle', DEFAULT_FACEBOOK_THROTTLE)); ?>" />
+                            <p class="description"><?php echo esc_html__('Minimum time between Facebook crawler requests.', 'social-bot-throttle'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Facebook User Agents', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <textarea name="nt_sbrt_facebook_agents" 
+                                      class="large-text code" 
+                                      rows="2"><?php echo esc_textarea(get_option('nt_sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit")); ?></textarea>
+                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Twitter Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <input type="number" 
+                                   class="regular-text"
+                                   step="0.1"
+                                   min="0" 
+                                   name="nt_sbrt_twitter_throttle" 
+                                   value="<?php echo esc_attr(get_option('nt_sbrt_twitter_throttle', DEFAULT_TWITTER_THROTTLE)); ?>" />
+                            <p class="description"><?php echo esc_html__('Minimum time between Twitter crawler requests.', 'social-bot-throttle'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Twitter User Agents', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <textarea name="nt_sbrt_twitter_agents"
+                                      class="large-text code"
+                                      rows="2"><?php echo esc_textarea(get_option('nt_sbrt_twitter_agents', "Twitterbot")); ?></textarea>
+                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Pinterest Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <input type="number"
+                                   class="regular-text"
+                                   step="0.1"
+                                   min="0"
+                                   name="nt_sbrt_pinterest_throttle" 
+                                   value="<?php echo esc_attr(get_option('nt_sbrt_pinterest_throttle', DEFAULT_PINTEREST_THROTTLE)); ?>" />
+                            <p class="description"><?php echo esc_html__('Minimum time between Pinterest crawler requests.', 'social-bot-throttle'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Pinterest User Agents', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <textarea name="nt_sbrt_pinterest_agents"
+                                      class="large-text code"
+                                      rows="2"><?php echo esc_textarea(get_option('nt_sbrt_pinterest_agents', "Pinterest")); ?></textarea>
+                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                        </td>
+                    </tr>
+                </table>
 
-    // Add custom sites
-    foreach ( $custom_sites as $site ) {
-        $site_key = sanitize_title( $site['name'] );
-        $config[ $site_key ] = array(
-            'agents' => array_filter( explode( "\n", $site['agents'] ) ),
-            'throttle' => floatval( $site['throttle'] ),
-            'transient_key' => 'sbrt_' . $site_key . '_last_access'
-        );
+                <h3><?php echo esc_html__('Custom Sites', 'social-bot-throttle'); ?></h3>
+                <div id="custom-sites">
+                    <?php foreach ($custom_sites as $index => $site): ?>
+                    <div class="custom-site">
+                        <h4><?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?> <?php echo $index + 1; ?></h4>
+                        <table class="form-table">
+                            <tr>
+                                <th scope="row"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></th>
+                                <td>
+                                    <input type="text" 
+                                           class="regular-text"
+                                           name="nt_sbrt_custom_sites[<?php echo $index; ?>][name]"
+                                           value="<?php echo esc_attr($site['name']); ?>" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
+                                <td>
+                                    <input type="number"
+                                           class="regular-text"
+                                           step="0.1"
+                                           min="0"
+                                           name="nt_sbrt_custom_sites[<?php echo $index; ?>][throttle]"
+                                           value="<?php echo esc_attr($site['throttle']); ?>" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></th>
+                                <td>
+                                    <textarea name="nt_sbrt_custom_sites[<?php echo $index; ?>][agents]"
+                                              class="large-text code"
+                                              rows="2"><?php echo esc_textarea($site['agents']); ?></textarea>
+                                    <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                                </td>
+                            </tr>
+                        </table>
+                        <button type="button" class="button remove-site"><?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?></button>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <button type="button" class="button" id="add-custom-site"><?php echo esc_html__('Add Custom Site', 'social-bot-throttle'); ?></button>
+            </div>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+
+    <script>
+    jQuery(document).ready(function($) {
+        var siteTemplate = `
+            <div class="custom-site">
+                <h4><?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?></h4>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <input type="text" class="regular-text" name="nt_sbrt_custom_sites[INDEX][name]" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <input type="number" class="regular-text" step="0.1" min="0" 
+                                   name="nt_sbrt_custom_sites[INDEX][throttle]" 
+                                   value="<?php echo DEFAULT_CUSTOM_THROTTLE; ?>" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></th>
+                        <td>
+                            <textarea name="nt_sbrt_custom_sites[INDEX][agents]" class="large-text code" rows="2"></textarea>
+                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                <button type="button" class="button remove-site"><?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?></button>
+            </div>
+        `;
+
+        $('#add-custom-site').click(function() {
+            var newSite = siteTemplate.replace(/INDEX/g, $('.custom-site').length);
+            $('#custom-sites').append(newSite);
+            updateSiteNumbers();
+        });
+
+        $(document).on('click', '.remove-site', function() {
+            $(this).closest('.custom-site').remove();
+            updateSiteNumbers();
+        });
+
+        function updateSiteNumbers() {
+            $('.custom-site').each(function(index) {
+                $(this).find('h4').text('<?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?> ' + (index + 1));
+                $(this).find('input, textarea').each(function() {
+                    var name = $(this).attr('name');
+                    $(this).attr('name', name.replace(/\[\d+\]/, '[' + index + ']'));
+                });
+            });
+        }
+    });
+    </script>
+    <?php
+}
+
+// Bot configurations
+function nt_sbrt_get_social_bots_config() {
+    $custom_sites = get_option('nt_sbrt_custom_sites', []);
+    
+    $config = [
+        'facebook' => [
+            'agents' => array_filter(explode("\n", get_option('nt_sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit"))),
+            'throttle' => floatval(get_option('nt_sbrt_facebook_throttle', DEFAULT_FACEBOOK_THROTTLE)),
+            'transient_key' => 'nt_sbrt_facebook_last_access_time'
+        ],
+        'twitter' => [
+            'agents' => array_filter(explode("\n", get_option('nt_sbrt_twitter_agents', "Twitterbot"))),
+            'throttle' => floatval(get_option('nt_sbrt_twitter_throttle', DEFAULT_TWITTER_THROTTLE)),
+            'transient_key' => 'nt_sbrt_twitter_last_access_time'
+        ],
+        'pinterest' => [
+            'agents' => array_filter(explode("\n", get_option('nt_sbrt_pinterest_agents', "Pinterest"))),
+            'throttle' => floatval(get_option('nt_sbrt_pinterest_throttle', DEFAULT_PINTEREST_THROTTLE)),
+            'transient_key' => 'nt_sbrt_pinterest_last_access_time'
+        ]
+    ];
+
+    // Add custom sites to configuration
+    foreach ($custom_sites as $index => $site) {
+        $site_key = sanitize_title($site['name']);
+        $config[$site_key] = [
+            'agents' => array_filter(explode("\n", $site['agents'])),
+            'throttle' => floatval($site['throttle']),
+            'transient_key' => 'nt_sbrt_' . $site_key . '_last_access_time'
+        ];
     }
 
-    return apply_filters( 'sbrt_bot_config', $config );
+    return $config;
 }
 
 /**
- * Identify bot request
- *
- * @since 2.4
- * @return array|false Bot config if request is from known crawler, false otherwise
+ * Determine if the incoming request originates from a known social media crawler.
+ * 
+ * @return array|false Returns bot config if request is from known crawler, false otherwise.
  */
-function sbrt_identify_bot_request() {
-    $user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? $_SERVER['HTTP_USER_AGENT'] : '';
-    $bots = sbrt_get_bot_config();
+function nt_sbrt_identify_bot_request() {
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $social_bots = nt_sbrt_get_social_bots_config();
     
-    foreach ( $bots as $bot_config ) {
-        foreach ( $bot_config['agents'] as $agent ) {
-            if ( false !== stripos( $user_agent, trim( $agent ) ) ) {
+    foreach ($social_bots as $bot_name => $bot_config) {
+        foreach ($bot_config['agents'] as $agent) {
+            if (strpos($user_agent, trim($agent)) !== false) {
                 return $bot_config;
             }
         }
@@ -181,45 +330,51 @@ function sbrt_identify_bot_request() {
 }
 
 /**
- * Handle bot request throttling
- *
- * @since 2.4
- * @param array $bot_config Bot configuration
+ * Check if the request is for an image file
+ * 
+ * @return bool 
  */
-function sbrt_bot_request_throttle( $bot_config ) {
-    $current_time = microtime( true );
-    $last_access = get_transient( $bot_config['transient_key'] );
-
-    if ( false !== $last_access ) {
-        $time_diff = $current_time - $last_access;
-        if ( $time_diff < $bot_config['throttle'] ) {
-            sbrt_send_throttle_response();
-        }
-    }
-
-    set_transient( 
-        $bot_config['transient_key'], 
-        $current_time, 
-        (int) $bot_config['throttle'] + 1 
-    );
+function nt_sbrt_is_image_request() {
+    $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $file_extension = strtolower(pathinfo($request_path, PATHINFO_EXTENSION));
+    $allowed_image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    
+    return in_array($file_extension, $allowed_image_extensions, true);
 }
 
 /**
- * Send throttle response
- *
- * @since 2.4
+ * Get the last access time for a specific bot
+ * 
+ * @param string $transient_key
+ * @return float|null
  */
-function sbrt_send_throttle_response() {
-    status_header( 429 );
-    header( 'Retry-After: 60' );
-    wp_die( 
-        esc_html__( 'Too Many Requests', 'social-bot-throttle' ),
-        esc_html__( 'Too Many Requests', 'social-bot-throttle' ),
-        array( 'response' => 429 )
-    );
+function nt_sbrt_get_last_access_time($transient_key) {
+    return get_transient($transient_key);
 }
 
-// Check for bot requests
-if ( $bot_config = sbrt_identify_bot_request() ) {
-    sbrt_bot_request_throttle( $bot_config );
+/**
+ * Set the last access time for a specific bot
+ * 
+ * @param string $transient_key
+ * @param float $current_time
+ * @param float $throttle_time
+ * @return bool
+ */
+function nt_sbrt_set_last_access_time($transient_key, $current_time, $throttle_time) {
+    // Set the transient to last just slightly longer than the throttle time
+    return set_transient($transient_key, $current_time, $throttle_time + 1);
+}
+
+/**
+ * Send throttle response with appropriate headers
+ */
+function nt_sbrt_send_throttle_response() {
+    status_header(429);
+    header('Retry-After: 60');
+    wp_die('Too Many Requests', 'Too Many Requests', ['response' => 429]);
+}
+
+// Main logic - only run throttle check for known bot requests
+if ($bot_config = nt_sbrt_identify_bot_request()) {
+    nt_sbrt_bot_request_throttle($bot_config);
 }
