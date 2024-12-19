@@ -7,6 +7,7 @@ function nt_sbrt_social_bot_throttle_init() {
     add_action('admin_menu', 'nt_sbrt_add_admin_menu');
     add_action('admin_init', 'nt_sbrt_register_settings');
     add_action('admin_enqueue_scripts', 'nt_sbrt_admin_styles');
+    add_action('wp_ajax_sbrt_test_bot', 'nt_sbrt_test_bot_ajax');
 }
 
 // Add menu item
@@ -68,6 +69,37 @@ function nt_sbrt_admin_styles($hook) {
         }
     ";
     wp_add_inline_style('sbrt-admin-styles', $custom_css);
+}
+
+// AJAX handler for bot testing
+function nt_sbrt_test_bot_ajax() {
+    check_ajax_referer('sbrt_test_bot', 'nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
+
+    $user_agent = sanitize_text_field($_POST['user_agent']);
+    
+    $args = array(
+        'user-agent' => $user_agent,
+        'timeout' => 30,
+    );
+
+    $response = wp_remote_get(home_url(), $args);
+
+    if (is_wp_error($response)) {
+        wp_send_json_error(array(
+            'status' => 500,
+            'message' => $response->get_error_message()
+        ));
+    }
+
+    wp_send_json_success(array(
+        'status' => wp_remote_retrieve_response_code($response),
+        'headers' => wp_remote_retrieve_headers($response),
+        'body' => wp_remote_retrieve_body($response)
+    ));
 }
 
 /**
@@ -347,32 +379,38 @@ function nt_sbrt_settings_page() {
           $(this).prop('disabled', true);
           resultsDiv.prepend('<div class="sbrt-test-result">Testing with user agent: ' + userAgent + '</div>');
 
-          // Create a hidden iframe with modified user agent
-          var iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.onload = function() {
-              var status = this.contentWindow.document.body.innerText.includes('Too Many Requests') ? 429 : 200;
-              var statusClass = status === 429 ? 'success' : (status === 200 ? 'info' : 'error');
-              var timestamp = new Date().toLocaleString();
-              
-              resultsDiv.prepend(
-                  '<div class="sbrt-test-result ' + statusClass + '">' +
-                  '[' + timestamp + '] Status: ' + status +
-                  (status === 429 ? ' (Throttled successfully)' : '') +
-                  '</div>'
-              );
-              
-              document.body.removeChild(iframe);
-              $('.sbrt-test-btn[data-bot="' + bot + '"]').prop('disabled', false);
-          };
-          
-          // Set user agent via meta tag since we can't modify headers directly
-          var html = '<html><head><meta http-equiv="User-Agent" content="' + userAgent + '"></head><body></body></html>';
-          document.body.appendChild(iframe);
-          iframe.contentWindow.document.open();
-          iframe.contentWindow.document.write(html);
-          iframe.contentWindow.location.href = '<?php echo esc_js(home_url()); ?>';
-          iframe.contentWindow.document.close();
+          $.ajax({
+              url: ajaxurl,
+              type: 'POST',
+              data: {
+                  action: 'sbrt_test_bot',
+                  nonce: '<?php echo wp_create_nonce('sbrt_test_bot'); ?>',
+                  user_agent: userAgent
+              },
+              success: function(response) {
+                  var status = response.data.status;
+                  var statusClass = status === 429 ? 'success' : (status === 200 ? 'info' : 'error');
+                  var timestamp = new Date().toLocaleString();
+                  
+                  resultsDiv.prepend(
+                      '<div class="sbrt-test-result ' + statusClass + '">' +
+                      '[' + timestamp + '] Status: ' + status +
+                      (status === 429 ? ' (Throttled successfully)' : '') +
+                      '</div>'
+                  );
+              },
+              error: function(xhr) {
+                  var timestamp = new Date().toLocaleString();
+                  resultsDiv.prepend(
+                      '<div class="sbrt-test-result error">' +
+                      '[' + timestamp + '] Error: Failed to test bot' +
+                      '</div>'
+                  );
+              },
+              complete: function() {
+                  $('.sbrt-test-btn[data-bot="' + bot + '"]').prop('disabled', false);
+              }
+          });
       });
   });
   </script>
