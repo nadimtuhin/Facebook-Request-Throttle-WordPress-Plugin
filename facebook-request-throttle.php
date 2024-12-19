@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Facebook Request Throttle
  * Description: Limits the request frequency from Facebook's web crawler.
- * Version: 2.1
+ * Version: 2.2
  * Author: Nadim Tuhin
  * Author URI: https://nadimtuhin.com
  */
@@ -27,6 +27,17 @@ function nt_isRequestFromFacebook() {
 }
 
 /**
+ * Check if the request is for an image file
+ * 
+ * @return bool 
+ */
+function nt_isImageRequest() {
+  $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+  $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+  return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+}
+
+/**
  * Get the last access time of Facebook's web crawler
  * 
  * @return float|null
@@ -47,6 +58,11 @@ function nt_setLastAccessTime($microTime) {
 }
 
 function nt_facebookRequestThrottle() {
+  // Skip throttling for image requests
+  if (nt_isImageRequest()) {
+    return;
+  }
+
   $lastTime = nt_getLastAccessTime();
   $microTime = microtime(TRUE);
 
