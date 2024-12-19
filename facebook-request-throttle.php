@@ -7,7 +7,7 @@
  *
  * @package   SocialBotThrottle
  * @author    Nadim Tuhin
- * @version   2.4
+ * @version   3.0
  * @link      https://nadimtuhin.com
  * @license   GPL-2.0+
  *
