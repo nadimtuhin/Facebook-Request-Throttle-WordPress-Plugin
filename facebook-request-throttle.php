@@ -84,11 +84,70 @@ function nt_sbrt_admin_styles($hook) {
         .sbrt-input { width: 100%; max-width: 300px; }
         .sbrt-textarea { width: 100%; min-height: 80px; font-family: monospace; }
         .sbrt-custom-sites { margin-top: 30px; }
-        .sbrt-custom-site { background: #f8f9fa; border-radius: 4px; padding: 20px; margin-bottom: 15px; }
-        .sbrt-custom-site h4 { margin-top: 0; }
-        .sbrt-buttons { margin-top: 20px; }
-        .sbrt-remove-btn { color: #dc3232; }
-        .sbrt-help-text { color: #666; font-style: italic; margin: 5px 0; }
+        .sbrt-custom-site { 
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            box-shadow: 0 1px 1px rgba(0,0,0,.04);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .sbrt-custom-site-header {
+            border-bottom: 1px solid #e5e5e5;
+            padding: 15px;
+            background: #f5f5f5;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sbrt-custom-site-header h3 {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .sbrt-custom-site-content {
+            padding: 15px;
+            background: #fff;
+        }
+        .sbrt-field {
+            margin-bottom: 15px;
+        }
+        .sbrt-field label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .sbrt-help-text { 
+            color: #666; 
+            font-size: 13px;
+            margin: 5px 0;
+        }
+        .sbrt-remove-btn {
+            color: #a00;
+            text-decoration: none;
+            float: right;
+        }
+        .sbrt-remove-btn:hover {
+            color: #dc3232;
+        }
+        .sbrt-add-new {
+            margin: 20px 0;
+        }
+        .sbrt-toggle-indicator:before {
+            content: "\\f142";
+            display: inline-block;
+            font: normal 20px/1 dashicons;
+            speak: never;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-decoration: none !important;
+        }
+        .sbrt-custom-site.closed .sbrt-toggle-indicator:before {
+            content: "\\f140";
+        }
+        .sbrt-custom-site.closed .sbrt-custom-site-content {
+            display: none;
+        }
     </style>';
 }
 
@@ -209,36 +268,44 @@ function nt_sbrt_settings_page() {
                     <div id="custom-sites">
                         <?php foreach ($custom_sites as $index => $site): ?>
                         <div class="sbrt-custom-site">
-                            <h4><?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?> <?php echo $index + 1; ?></h4>
-                            <div class="sbrt-field">
-                                <label class="sbrt-label"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></label>
-                                <input type="text"
-                                       class="sbrt-input"
-                                       name="nt_sbrt_custom_sites[<?php echo $index; ?>][name]"
-                                       value="<?php echo esc_attr($site['name']); ?>" />
+                            <div class="sbrt-custom-site-header">
+                                <h3>
+                                    <?php echo esc_html($site['name'] ?: __('New Custom Site', 'social-bot-throttle')); ?>
+                                </h3>
+                                <span class="sbrt-toggle-indicator"></span>
                             </div>
-                            <div class="sbrt-field">
-                                <label class="sbrt-label"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
-                                <input type="number"
-                                       class="sbrt-input"
-                                       step="0.1"
-                                       min="0"
-                                       name="nt_sbrt_custom_sites[<?php echo $index; ?>][throttle]"
-                                       value="<?php echo esc_attr($site['throttle']); ?>" />
+                            <div class="sbrt-custom-site-content">
+                                <div class="sbrt-field">
+                                    <label><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></label>
+                                    <input type="text"
+                                           class="regular-text"
+                                           name="nt_sbrt_custom_sites[<?php echo $index; ?>][name]"
+                                           value="<?php echo esc_attr($site['name']); ?>" />
+                                </div>
+                                <div class="sbrt-field">
+                                    <label><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
+                                    <input type="number"
+                                           class="small-text"
+                                           step="0.1"
+                                           min="0"
+                                           name="nt_sbrt_custom_sites[<?php echo $index; ?>][throttle]"
+                                           value="<?php echo esc_attr($site['throttle']); ?>" />
+                                </div>
+                                <div class="sbrt-field">
+                                    <label><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
+                                    <textarea name="nt_sbrt_custom_sites[<?php echo $index; ?>][agents]"
+                                              class="large-text code"
+                                              rows="4"><?php echo esc_textarea($site['agents']); ?></textarea>
+                                    <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                                </div>
+                                <button type="button" class="button button-link-delete sbrt-remove-btn">
+                                    <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
+                                </button>
                             </div>
-                            <div class="sbrt-field">
-                                <label class="sbrt-label"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
-                                <textarea name="nt_sbrt_custom_sites[<?php echo $index; ?>][agents]"
-                                          class="sbrt-textarea"><?php echo esc_textarea($site['agents']); ?></textarea>
-                                <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
-                            </div>
-                            <button type="button" class="button sbrt-remove-btn remove-site">
-                                <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
-                            </button>
                         </div>
                         <?php endforeach; ?>
                     </div>
-                    <div class="sbrt-buttons">
+                    <div class="sbrt-add-new">
                         <button type="button" class="button button-secondary" id="add-custom-site">
                             <span class="dashicons dashicons-plus-alt"></span> <?php echo esc_html__('Add Custom Site', 'social-bot-throttle'); ?>
                         </button>
@@ -253,25 +320,32 @@ function nt_sbrt_settings_page() {
     jQuery(document).ready(function($) {
         var siteTemplate = `
             <div class="sbrt-custom-site">
-                <h4><?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?></h4>
-                <div class="sbrt-field">
-                    <label class="sbrt-label"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></label>
-                    <input type="text" class="sbrt-input" name="nt_sbrt_custom_sites[INDEX][name]" />
+                <div class="sbrt-custom-site-header">
+                    <h3><?php echo esc_html__('New Custom Site', 'social-bot-throttle'); ?></h3>
+                    <span class="sbrt-toggle-indicator"></span>
                 </div>
-                <div class="sbrt-field">
-                    <label class="sbrt-label"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
-                    <input type="number" class="sbrt-input" step="0.1" min="0" 
-                           name="nt_sbrt_custom_sites[INDEX][throttle]" 
-                           value="<?php echo DEFAULT_CUSTOM_THROTTLE; ?>" />
+                <div class="sbrt-custom-site-content">
+                    <div class="sbrt-field">
+                        <label><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></label>
+                        <input type="text" class="regular-text" name="nt_sbrt_custom_sites[INDEX][name]" />
+                    </div>
+                    <div class="sbrt-field">
+                        <label><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
+                        <input type="number" class="small-text" step="0.1" min="0" 
+                               name="nt_sbrt_custom_sites[INDEX][throttle]" 
+                               value="<?php echo DEFAULT_CUSTOM_THROTTLE; ?>" />
+                    </div>
+                    <div class="sbrt-field">
+                        <label><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
+                        <textarea name="nt_sbrt_custom_sites[INDEX][agents]" 
+                                  class="large-text code" 
+                                  rows="4"></textarea>
+                        <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                    </div>
+                    <button type="button" class="button button-link-delete sbrt-remove-btn">
+                        <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
+                    </button>
                 </div>
-                <div class="sbrt-field">
-                    <label class="sbrt-label"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
-                    <textarea name="nt_sbrt_custom_sites[INDEX][agents]" class="sbrt-textarea"></textarea>
-                    <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
-                </div>
-                <button type="button" class="button sbrt-remove-btn remove-site">
-                    <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
-                </button>
             </div>
         `;
 
@@ -281,14 +355,22 @@ function nt_sbrt_settings_page() {
             updateSiteNumbers();
         });
 
-        $(document).on('click', '.remove-site', function() {
+        $(document).on('click', '.sbrt-remove-btn', function() {
             $(this).closest('.sbrt-custom-site').remove();
             updateSiteNumbers();
         });
 
+        $(document).on('click', '.sbrt-custom-site-header', function() {
+            $(this).closest('.sbrt-custom-site').toggleClass('closed');
+        });
+
+        $(document).on('input', 'input[name$="[name]"]', function() {
+            var siteName = $(this).val() || '<?php echo esc_html__('New Custom Site', 'social-bot-throttle'); ?>';
+            $(this).closest('.sbrt-custom-site').find('.sbrt-custom-site-header h3').text(siteName);
+        });
+
         function updateSiteNumbers() {
             $('.sbrt-custom-site').each(function(index) {
-                $(this).find('h4').text('<?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?> ' + (index + 1));
                 $(this).find('input, textarea').each(function() {
                     var name = $(this).attr('name');
                     $(this).attr('name', name.replace(/\[\d+\]/, '[' + index + ']'));
