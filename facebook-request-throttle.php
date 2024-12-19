@@ -38,6 +38,7 @@ define('DEFAULT_CUSTOM_THROTTLE', 60.0);
 function nt_sbrt_social_bot_throttle_init() {
     add_action('admin_menu', 'nt_sbrt_add_admin_menu');
     add_action('admin_init', 'nt_sbrt_register_settings');
+    add_action('admin_enqueue_scripts', 'nt_sbrt_admin_styles');
 }
 add_action('init', 'nt_sbrt_social_bot_throttle_init');
 
@@ -61,6 +62,34 @@ function nt_sbrt_register_settings() {
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_throttle', 'floatval');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_pinterest_agents', 'sanitize_textarea_field');
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_custom_sites', 'nt_sbrt_sanitize_custom_sites');
+}
+
+// Add admin styles
+function nt_sbrt_admin_styles($hook) {
+    if ($hook !== 'settings_page_social-bot-throttle') {
+        return;
+    }
+    
+    wp_enqueue_style('wp-color-picker');
+    wp_enqueue_script('wp-color-picker');
+    
+    // Add custom styles
+    echo '<style>
+        .sbrt-settings-wrap { max-width: 1200px; margin: 20px auto; }
+        .sbrt-card { background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .sbrt-card h2 { margin-top: 0; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+        .sbrt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .sbrt-bot-config { background: #f8f9fa; border-radius: 4px; padding: 15px; }
+        .sbrt-bot-config h3 { margin-top: 0; }
+        .sbrt-input { width: 100%; max-width: 300px; }
+        .sbrt-textarea { width: 100%; min-height: 80px; font-family: monospace; }
+        .sbrt-custom-sites { margin-top: 30px; }
+        .sbrt-custom-site { background: #f8f9fa; border-radius: 4px; padding: 20px; margin-bottom: 15px; }
+        .sbrt-custom-site h4 { margin-top: 0; }
+        .sbrt-buttons { margin-top: 20px; }
+        .sbrt-remove-btn { color: #dc3232; }
+        .sbrt-help-text { color: #666; font-style: italic; margin: 5px 0; }
+    </style>';
 }
 
 /**
@@ -93,10 +122,12 @@ function nt_sbrt_sanitize_custom_sites($sites) {
 function nt_sbrt_settings_page() {
     $custom_sites = get_option('nt_sbrt_custom_sites', []);
     ?>
-    <div class="wrap">
+    <div class="wrap sbrt-settings-wrap">
         <h1><?php echo esc_html__('Social Bot Throttle Settings', 'social-bot-throttle'); ?></h1>
-        <div class="notice notice-info">
-            <p><?php echo esc_html__('Configure throttle times and user agents for different social media crawlers.', 'social-bot-throttle'); ?></p>
+        
+        <div class="notice notice-info is-dismissible">
+            <p><strong><?php echo esc_html__('How it works:', 'social-bot-throttle'); ?></strong> 
+            <?php echo esc_html__('Configure throttle times and user agents for different social media crawlers. The plugin will limit their request frequency based on these settings.', 'social-bot-throttle'); ?></p>
         </div>
         
         <form method="post" action="options.php">
@@ -104,165 +135,159 @@ function nt_sbrt_settings_page() {
             settings_fields('nt_sbrt_social_bot_throttle');
             do_settings_sections('nt_sbrt_social_bot_throttle');
             ?>
-            <div class="card">
-                <h2><?php echo esc_html__('Crawler Settings', 'social-bot-throttle'); ?></h2>
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Facebook Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
-                        <td>
+            
+            <div class="sbrt-card">
+                <h2><?php echo esc_html__('Social Media Crawlers', 'social-bot-throttle'); ?></h2>
+                
+                <div class="sbrt-grid">
+                    <!-- Facebook Settings -->
+                    <div class="sbrt-bot-config">
+                        <h3><span class="dashicons dashicons-facebook"></span> <?php echo esc_html__('Facebook', 'social-bot-throttle'); ?></h3>
+                        <div class="sbrt-field">
+                            <label class="sbrt-label"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
                             <input type="number" 
-                                   class="regular-text" 
-                                   step="0.1" 
+                                   class="sbrt-input"
+                                   step="0.1"
                                    min="0"
-                                   name="nt_sbrt_facebook_throttle" 
+                                   name="nt_sbrt_facebook_throttle"
                                    value="<?php echo esc_attr(get_option('nt_sbrt_facebook_throttle', DEFAULT_FACEBOOK_THROTTLE)); ?>" />
-                            <p class="description"><?php echo esc_html__('Minimum time between Facebook crawler requests.', 'social-bot-throttle'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Facebook User Agents', 'social-bot-throttle'); ?></th>
-                        <td>
-                            <textarea name="nt_sbrt_facebook_agents" 
-                                      class="large-text code" 
-                                      rows="2"><?php echo esc_textarea(get_option('nt_sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit")); ?></textarea>
-                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Twitter Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
-                        <td>
-                            <input type="number" 
-                                   class="regular-text"
-                                   step="0.1"
-                                   min="0" 
-                                   name="nt_sbrt_twitter_throttle" 
-                                   value="<?php echo esc_attr(get_option('nt_sbrt_twitter_throttle', DEFAULT_TWITTER_THROTTLE)); ?>" />
-                            <p class="description"><?php echo esc_html__('Minimum time between Twitter crawler requests.', 'social-bot-throttle'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Twitter User Agents', 'social-bot-throttle'); ?></th>
-                        <td>
-                            <textarea name="nt_sbrt_twitter_agents"
-                                      class="large-text code"
-                                      rows="2"><?php echo esc_textarea(get_option('nt_sbrt_twitter_agents', "Twitterbot")); ?></textarea>
-                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Pinterest Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
-                        <td>
+                            <p class="sbrt-help-text"><?php echo esc_html__('Minimum time between Facebook crawler requests.', 'social-bot-throttle'); ?></p>
+                        </div>
+                        <div class="sbrt-field">
+                            <label class="sbrt-label"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
+                            <textarea name="nt_sbrt_facebook_agents"
+                                      class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit")); ?></textarea>
+                            <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                        </div>
+                    </div>
+
+                    <!-- Twitter Settings -->
+                    <div class="sbrt-bot-config">
+                        <h3><span class="dashicons dashicons-twitter"></span> <?php echo esc_html__('Twitter', 'social-bot-throttle'); ?></h3>
+                        <div class="sbrt-field">
+                            <label class="sbrt-label"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
                             <input type="number"
-                                   class="regular-text"
+                                   class="sbrt-input"
                                    step="0.1"
                                    min="0"
-                                   name="nt_sbrt_pinterest_throttle" 
-                                   value="<?php echo esc_attr(get_option('nt_sbrt_pinterest_throttle', DEFAULT_PINTEREST_THROTTLE)); ?>" />
-                            <p class="description"><?php echo esc_html__('Minimum time between Pinterest crawler requests.', 'social-bot-throttle'); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Pinterest User Agents', 'social-bot-throttle'); ?></th>
-                        <td>
-                            <textarea name="nt_sbrt_pinterest_agents"
-                                      class="large-text code"
-                                      rows="2"><?php echo esc_textarea(get_option('nt_sbrt_pinterest_agents', "Pinterest")); ?></textarea>
-                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
-                        </td>
-                    </tr>
-                </table>
-
-                <h3><?php echo esc_html__('Custom Sites', 'social-bot-throttle'); ?></h3>
-                <div id="custom-sites">
-                    <?php foreach ($custom_sites as $index => $site): ?>
-                    <div class="custom-site">
-                        <h4><?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?> <?php echo $index + 1; ?></h4>
-                        <table class="form-table">
-                            <tr>
-                                <th scope="row"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></th>
-                                <td>
-                                    <input type="text" 
-                                           class="regular-text"
-                                           name="nt_sbrt_custom_sites[<?php echo $index; ?>][name]"
-                                           value="<?php echo esc_attr($site['name']); ?>" />
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
-                                <td>
-                                    <input type="number"
-                                           class="regular-text"
-                                           step="0.1"
-                                           min="0"
-                                           name="nt_sbrt_custom_sites[<?php echo $index; ?>][throttle]"
-                                           value="<?php echo esc_attr($site['throttle']); ?>" />
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></th>
-                                <td>
-                                    <textarea name="nt_sbrt_custom_sites[<?php echo $index; ?>][agents]"
-                                              class="large-text code"
-                                              rows="2"><?php echo esc_textarea($site['agents']); ?></textarea>
-                                    <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
-                                </td>
-                            </tr>
-                        </table>
-                        <button type="button" class="button remove-site"><?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?></button>
+                                   name="nt_sbrt_twitter_throttle"
+                                   value="<?php echo esc_attr(get_option('nt_sbrt_twitter_throttle', DEFAULT_TWITTER_THROTTLE)); ?>" />
+                            <p class="sbrt-help-text"><?php echo esc_html__('Minimum time between Twitter crawler requests.', 'social-bot-throttle'); ?></p>
+                        </div>
+                        <div class="sbrt-field">
+                            <label class="sbrt-label"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
+                            <textarea name="nt_sbrt_twitter_agents"
+                                      class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_twitter_agents', "Twitterbot")); ?></textarea>
+                            <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                        </div>
                     </div>
-                    <?php endforeach; ?>
+
+                    <!-- Pinterest Settings -->
+                    <div class="sbrt-bot-config">
+                        <h3><span class="dashicons dashicons-pinterest"></span> <?php echo esc_html__('Pinterest', 'social-bot-throttle'); ?></h3>
+                        <div class="sbrt-field">
+                            <label class="sbrt-label"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
+                            <input type="number"
+                                   class="sbrt-input"
+                                   step="0.1"
+                                   min="0"
+                                   name="nt_sbrt_pinterest_throttle"
+                                   value="<?php echo esc_attr(get_option('nt_sbrt_pinterest_throttle', DEFAULT_PINTEREST_THROTTLE)); ?>" />
+                            <p class="sbrt-help-text"><?php echo esc_html__('Minimum time between Pinterest crawler requests.', 'social-bot-throttle'); ?></p>
+                        </div>
+                        <div class="sbrt-field">
+                            <label class="sbrt-label"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
+                            <textarea name="nt_sbrt_pinterest_agents"
+                                      class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_pinterest_agents', "Pinterest")); ?></textarea>
+                            <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                        </div>
+                    </div>
                 </div>
-                <button type="button" class="button" id="add-custom-site"><?php echo esc_html__('Add Custom Site', 'social-bot-throttle'); ?></button>
+
+                <div class="sbrt-custom-sites">
+                    <h3><?php echo esc_html__('Custom Sites', 'social-bot-throttle'); ?></h3>
+                    <div id="custom-sites">
+                        <?php foreach ($custom_sites as $index => $site): ?>
+                        <div class="sbrt-custom-site">
+                            <h4><?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?> <?php echo $index + 1; ?></h4>
+                            <div class="sbrt-field">
+                                <label class="sbrt-label"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></label>
+                                <input type="text"
+                                       class="sbrt-input"
+                                       name="nt_sbrt_custom_sites[<?php echo $index; ?>][name]"
+                                       value="<?php echo esc_attr($site['name']); ?>" />
+                            </div>
+                            <div class="sbrt-field">
+                                <label class="sbrt-label"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
+                                <input type="number"
+                                       class="sbrt-input"
+                                       step="0.1"
+                                       min="0"
+                                       name="nt_sbrt_custom_sites[<?php echo $index; ?>][throttle]"
+                                       value="<?php echo esc_attr($site['throttle']); ?>" />
+                            </div>
+                            <div class="sbrt-field">
+                                <label class="sbrt-label"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
+                                <textarea name="nt_sbrt_custom_sites[<?php echo $index; ?>][agents]"
+                                          class="sbrt-textarea"><?php echo esc_textarea($site['agents']); ?></textarea>
+                                <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                            </div>
+                            <button type="button" class="button sbrt-remove-btn remove-site">
+                                <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
+                            </button>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="sbrt-buttons">
+                        <button type="button" class="button button-secondary" id="add-custom-site">
+                            <span class="dashicons dashicons-plus-alt"></span> <?php echo esc_html__('Add Custom Site', 'social-bot-throttle'); ?>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <?php submit_button(); ?>
+            <?php submit_button(null, 'primary', 'submit', true, ['id' => 'sbrt-save-settings']); ?>
         </form>
     </div>
 
     <script>
     jQuery(document).ready(function($) {
         var siteTemplate = `
-            <div class="custom-site">
+            <div class="sbrt-custom-site">
                 <h4><?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?></h4>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></th>
-                        <td>
-                            <input type="text" class="regular-text" name="nt_sbrt_custom_sites[INDEX][name]" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></th>
-                        <td>
-                            <input type="number" class="regular-text" step="0.1" min="0" 
-                                   name="nt_sbrt_custom_sites[INDEX][throttle]" 
-                                   value="<?php echo DEFAULT_CUSTOM_THROTTLE; ?>" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></th>
-                        <td>
-                            <textarea name="nt_sbrt_custom_sites[INDEX][agents]" class="large-text code" rows="2"></textarea>
-                            <p class="description"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
-                        </td>
-                    </tr>
-                </table>
-                <button type="button" class="button remove-site"><?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?></button>
+                <div class="sbrt-field">
+                    <label class="sbrt-label"><?php echo esc_html__('Site Name', 'social-bot-throttle'); ?></label>
+                    <input type="text" class="sbrt-input" name="nt_sbrt_custom_sites[INDEX][name]" />
+                </div>
+                <div class="sbrt-field">
+                    <label class="sbrt-label"><?php echo esc_html__('Throttle Time (seconds)', 'social-bot-throttle'); ?></label>
+                    <input type="number" class="sbrt-input" step="0.1" min="0" 
+                           name="nt_sbrt_custom_sites[INDEX][throttle]" 
+                           value="<?php echo DEFAULT_CUSTOM_THROTTLE; ?>" />
+                </div>
+                <div class="sbrt-field">
+                    <label class="sbrt-label"><?php echo esc_html__('User Agents', 'social-bot-throttle'); ?></label>
+                    <textarea name="nt_sbrt_custom_sites[INDEX][agents]" class="sbrt-textarea"></textarea>
+                    <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
+                </div>
+                <button type="button" class="button sbrt-remove-btn remove-site">
+                    <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
+                </button>
             </div>
         `;
 
         $('#add-custom-site').click(function() {
-            var newSite = siteTemplate.replace(/INDEX/g, $('.custom-site').length);
+            var newSite = siteTemplate.replace(/INDEX/g, $('.sbrt-custom-site').length);
             $('#custom-sites').append(newSite);
             updateSiteNumbers();
         });
 
         $(document).on('click', '.remove-site', function() {
-            $(this).closest('.custom-site').remove();
+            $(this).closest('.sbrt-custom-site').remove();
             updateSiteNumbers();
         });
 
         function updateSiteNumbers() {
-            $('.custom-site').each(function(index) {
+            $('.sbrt-custom-site').each(function(index) {
                 $(this).find('h4').text('<?php echo esc_html__('Custom Site', 'social-bot-throttle'); ?> ' + (index + 1));
                 $(this).find('input, textarea').each(function() {
                     var name = $(this).attr('name');
