@@ -3,7 +3,7 @@
  * Deactivation functionality
  *
  * @package SocialBotThrottle
- * @since   3.1-rc
+ * @since   3.2
  */
 
 // Exit if accessed directly.
@@ -17,7 +17,7 @@ register_activation_hook( __FILE__, 'nt_sbrt_schedule_log_cleanup' );
 /**
  * Schedule log cleanup on plugin activation.
  *
- * @since 3.1-rc
+ * @since 3.2
  */
 function nt_sbrt_schedule_log_cleanup() {
     if ( ! wp_next_scheduled( 'nt_sbrt_cleanup_logs' ) ) {
@@ -31,7 +31,7 @@ add_action( 'nt_sbrt_cleanup_logs', 'nt_sbrt_do_log_cleanup' );
 /**
  * Clean up old logs.
  *
- * @since 3.1-rc
+ * @since 3.2
  */
 function nt_sbrt_do_log_cleanup() {
     global $wpdb;
@@ -48,7 +48,7 @@ register_activation_hook( __FILE__, 'nt_sbrt_create_log_table' );
 /**
  * Create log table on plugin activation.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @return bool True on success, false on failure.
  */
 function nt_sbrt_create_log_table() {
@@ -88,7 +88,7 @@ register_deactivation_hook( __FILE__, 'nt_sbrt_drop_log_table' );
 /**
  * Drop log table on plugin deactivation.
  *
- * @since 3.1-rc
+ * @since 3.2
  */
 function nt_sbrt_drop_log_table() {
     global $wpdb;

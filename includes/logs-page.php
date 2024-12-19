@@ -3,7 +3,7 @@
  * Logs page functionality
  *
  * @package SocialBotThrottle
- * @since   3.1-rc
+ * @since   3.2
  */
 
 // Exit if accessed directly.
@@ -17,7 +17,7 @@ add_action( 'admin_menu', 'nt_sbrt_add_logs_menu' );
 /**
  * Add logs page to admin menu.
  *
- * @since 3.1-rc
+ * @since 3.2
  */
 function nt_sbrt_add_logs_menu() {
     add_submenu_page(
@@ -33,7 +33,7 @@ function nt_sbrt_add_logs_menu() {
 /**
  * Display logs page content.
  *
- * @since 3.1-rc
+ * @since 3.2
  */
 function nt_sbrt_logs_page() {
     if ( ! current_user_can( 'manage_options' ) ) {

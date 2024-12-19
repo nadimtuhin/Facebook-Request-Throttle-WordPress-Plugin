@@ -7,7 +7,7 @@
  *
  * @package   SocialBotThrottle
  * @author    Nadim Tuhin
- * @version   3.1-rc
+ * @version   3.2
  * @link      https://nadimtuhin.com
  * @license   GPL-2.0+
  * @copyright 2024 Nadim Tuhin
@@ -16,7 +16,7 @@
  * Plugin Name:       Social Bot Request Throttle
  * Plugin URI:        https://nadimtuhin.com/social-bot-throttle
  * Description:       Limits the request frequency from various social media web crawlers.
- * Version:           3.1-rc
+ * Version:           3.2
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            Nadim Tuhin
@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define plugin constants.
 if ( ! defined( 'SBRT_VERSION' ) ) {
-    define( 'SBRT_VERSION', '3.1-rc' );
+    define( 'SBRT_VERSION', '3.2' );
 }
 
 if ( ! defined( 'SBRT_PLUGIN_DIR' ) ) {
@@ -62,7 +62,7 @@ if ( ! defined( 'DEFAULT_CUSTOM_THROTTLE' ) ) {
 /**
  * Load plugin textdomain.
  *
- * @since 3.1-rc
+ * @since 3.2
  */
 function nt_sbrt_load_textdomain() {
     load_plugin_textdomain( 'social-bot-throttle', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
@@ -78,7 +78,7 @@ add_action( 'plugins_loaded', 'nt_sbrt_load_admin' );
 /**
  * Load admin functionality.
  *
- * @since 3.1-rc
+ * @since 3.2
  */
 function nt_sbrt_load_admin() {
     if ( is_admin() ) {
@@ -232,7 +232,7 @@ function nt_sbrt_set_last_access_time($transient_key, $current_time, $throttle_t
 /**
  * Log throttled request.
  * 
- * @since 3.1-rc
+ * @since 3.2
  * @param array  $bot_config   Bot configuration.
  * @param string $request_uri  Request URI.
  * @param string $user_agent   User agent string.
@@ -259,7 +259,7 @@ function nt_sbrt_log_throttled_request( $bot_config, $request_uri = '', $user_ag
 /**
  * Send throttle response.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @param array $bot_config Bot configuration.
  */
 function nt_sbrt_send_throttle_response( $bot_config ) {

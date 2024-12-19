@@ -4,7 +4,7 @@ Tags: social media, throttle, facebook, twitter, pinterest, crawler, bot, perfor
 Requires at least: 5.2
 Tested up to: 6.4
 Requires PHP: 7.2
-Stable tag: 3.1-rc
+Stable tag: 3.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,7 +52,7 @@ No, the plugin only throttles requests from identified social media bots. Regula
 
 == Changelog ==
 
-= 3.1-rc =
+= 3.2 =
 * Added custom bot support
 * Improved logging functionality
 * Added image request throttling option
@@ -60,7 +60,7 @@ No, the plugin only throttles requests from identified social media bots. Regula
 
 == Upgrade Notice ==
 
-= 3.1-rc =
+= 3.2 =
 This version adds custom bot support and improved logging functionality. Upgrade for better control over social media bot traffic.
 
 == Screenshots ==

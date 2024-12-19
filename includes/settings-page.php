@@ -3,7 +3,7 @@
  * Settings page functionality
  *
  * @package SocialBotThrottle
- * @since   3.1-rc
+ * @since   3.2
  */
 
 // Exit if accessed directly.
@@ -16,7 +16,7 @@ add_action( 'init', 'nt_sbrt_social_bot_throttle_init' );
 /**
  * Initialize plugin settings.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @return void
  */
 function nt_sbrt_social_bot_throttle_init() {
@@ -29,7 +29,7 @@ function nt_sbrt_social_bot_throttle_init() {
 /**
  * Add menu item to WordPress admin.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @return void
  */
 function nt_sbrt_add_admin_menu() {
@@ -45,7 +45,7 @@ function nt_sbrt_add_admin_menu() {
 /**
  * Sanitize custom sites array.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @param array $sites Array of custom site settings.
  * @return array Sanitized settings.
  */
@@ -73,7 +73,7 @@ function nt_sbrt_sanitize_custom_sites( $sites ) {
 /**
  * Register plugin settings.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @return void
  */
 function nt_sbrt_register_settings() {
@@ -92,7 +92,7 @@ function nt_sbrt_register_settings() {
 /**
  * Add admin styles.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @param string $hook The current admin page.
  * @return void
  */
@@ -134,7 +134,7 @@ function nt_sbrt_admin_styles( $hook ) {
 /**
  * AJAX handler for bot testing.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @return void
  */
 function nt_sbrt_test_bot_ajax() {
@@ -170,7 +170,7 @@ function nt_sbrt_test_bot_ajax() {
 /**
  * Renders the settings page HTML.
  *
- * @since 3.1-rc
+ * @since 3.2
  * @return void
  */
 function nt_sbrt_settings_page() {
