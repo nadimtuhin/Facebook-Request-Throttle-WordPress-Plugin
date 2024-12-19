@@ -1,5 +1,5 @@
 # URL of your WordPress site
-URL="http://pathao-career.local/"
+URL="http://wordpress.local/"
 
 # User agent strings for Facebook's web crawlers
 USER_AGENT_FACEBOOK="facebookexternalhit"
@@ -25,3 +25,6 @@ send_requests() {
 # Run the tests
 send_requests "$USER_AGENT_FACEBOOK"
 send_requests "$USER_AGENT_META"
+
+# Test curl command example
+# curl -A "facebookexternalhit" http://pathao-career.local/

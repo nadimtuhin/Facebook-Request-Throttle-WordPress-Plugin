@@ -66,16 +66,19 @@ function nt_sbrt_get_social_bots_config() {
     
     $config = [
         'facebook' => [
+            'name' => 'Facebook',
             'agents' => array_filter(explode("\n", get_option('nt_sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit"))),
             'throttle' => floatval(get_option('nt_sbrt_facebook_throttle', DEFAULT_FACEBOOK_THROTTLE)),
             'transient_key' => 'nt_sbrt_facebook_last_access_time'
         ],
         'twitter' => [
+            'name' => 'Twitter',
             'agents' => array_filter(explode("\n", get_option('nt_sbrt_twitter_agents', "Twitterbot"))),
             'throttle' => floatval(get_option('nt_sbrt_twitter_throttle', DEFAULT_TWITTER_THROTTLE)),
             'transient_key' => 'nt_sbrt_twitter_last_access_time'
         ],
         'pinterest' => [
+            'name' => 'Pinterest',
             'agents' => array_filter(explode("\n", get_option('nt_sbrt_pinterest_agents', "Pinterest"))),
             'throttle' => floatval(get_option('nt_sbrt_pinterest_throttle', DEFAULT_PINTEREST_THROTTLE)),
             'transient_key' => 'nt_sbrt_pinterest_last_access_time'
@@ -86,6 +89,7 @@ function nt_sbrt_get_social_bots_config() {
     foreach ($custom_sites as $index => $site) {
         $site_key = sanitize_title($site['name']);
         $config[$site_key] = [
+            'name' => $site['name'],
             'agents' => array_filter(explode("\n", $site['agents'])),
             'throttle' => floatval($site['throttle']),
             'transient_key' => 'nt_sbrt_' . $site_key . '_last_access_time'
@@ -153,13 +157,14 @@ function nt_sbrt_set_last_access_time($transient_key, $current_time, $throttle_t
 /**
  * Send throttle response with appropriate headers
  */
-function nt_sbrt_send_throttle_response() {
+function nt_sbrt_send_throttle_response($bot_config) {
     status_header(429);
     header('Retry-After: 60');
-    wp_die('Too Many Requests', 'Too Many Requests', ['response' => 429]);
+    error_log('Too Many Requests for ' . $bot_config['name']);
+    wp_die('Too Many Requests for ' . $bot_config['name'], 'Too Many Requests', ['response' => 429]);
 }
 
 // Main logic - only run throttle check for known bot requests
 if ($bot_config = nt_sbrt_identify_bot_request()) {
-    nt_sbrt_bot_request_throttle($bot_config);
+  nt_sbrt_send_throttle_response($bot_config);
 }
