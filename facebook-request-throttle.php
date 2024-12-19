@@ -148,6 +148,29 @@ function nt_sbrt_admin_styles($hook) {
         .sbrt-custom-site.closed .sbrt-custom-site-content {
             display: none;
         }
+        .sbrt-test-results {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .sbrt-test-result {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .sbrt-test-result.success {
+            color: #46b450;
+        }
+        .sbrt-test-result.error {
+            color: #dc3232;
+        }
+        .sbrt-test-btn {
+            margin-top: 10px !important;
+        }
     </style>';
 }
 
@@ -218,6 +241,10 @@ function nt_sbrt_settings_page() {
                                       class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_facebook_agents', "meta-externalagent\nfacebookexternalhit")); ?></textarea>
                             <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                         </div>
+                        <button type="button" class="button button-secondary sbrt-test-btn" data-bot="facebook">
+                            <?php echo esc_html__('Test Facebook Throttle', 'social-bot-throttle'); ?>
+                        </button>
+                        <div class="sbrt-test-results" id="facebook-test-results"></div>
                     </div>
 
                     <!-- Twitter Settings -->
@@ -239,6 +266,10 @@ function nt_sbrt_settings_page() {
                                       class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_twitter_agents', "Twitterbot")); ?></textarea>
                             <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                         </div>
+                        <button type="button" class="button button-secondary sbrt-test-btn" data-bot="twitter">
+                            <?php echo esc_html__('Test Twitter Throttle', 'social-bot-throttle'); ?>
+                        </button>
+                        <div class="sbrt-test-results" id="twitter-test-results"></div>
                     </div>
 
                     <!-- Pinterest Settings -->
@@ -260,6 +291,10 @@ function nt_sbrt_settings_page() {
                                       class="sbrt-textarea"><?php echo esc_textarea(get_option('nt_sbrt_pinterest_agents', "Pinterest")); ?></textarea>
                             <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                         </div>
+                        <button type="button" class="button button-secondary sbrt-test-btn" data-bot="pinterest">
+                            <?php echo esc_html__('Test Pinterest Throttle', 'social-bot-throttle'); ?>
+                        </button>
+                        <div class="sbrt-test-results" id="pinterest-test-results"></div>
                     </div>
                 </div>
 
@@ -298,6 +333,10 @@ function nt_sbrt_settings_page() {
                                               rows="4"><?php echo esc_textarea($site['agents']); ?></textarea>
                                     <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                                 </div>
+                                <button type="button" class="button button-secondary sbrt-test-btn" data-bot="custom-<?php echo $index; ?>">
+                                    <?php echo esc_html__('Test Bot Throttle', 'social-bot-throttle'); ?>
+                                </button>
+                                <div class="sbrt-test-results" id="custom-<?php echo $index; ?>-test-results"></div>
                                 <button type="button" class="button button-link-delete sbrt-remove-btn">
                                     <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
                                 </button>
@@ -342,6 +381,10 @@ function nt_sbrt_settings_page() {
                                   rows="4"></textarea>
                         <p class="sbrt-help-text"><?php echo esc_html__('Enter one user agent per line.', 'social-bot-throttle'); ?></p>
                     </div>
+                    <button type="button" class="button button-secondary sbrt-test-btn" data-bot="custom-INDEX">
+                        <?php echo esc_html__('Test Bot Throttle', 'social-bot-throttle'); ?>
+                    </button>
+                    <div class="sbrt-test-results" id="custom-INDEX-test-results"></div>
                     <button type="button" class="button button-link-delete sbrt-remove-btn">
                         <span class="dashicons dashicons-trash"></span> <?php echo esc_html__('Remove Site', 'social-bot-throttle'); ?>
                     </button>
@@ -377,6 +420,60 @@ function nt_sbrt_settings_page() {
                 });
             });
         }
+
+        // Test button functionality
+        $('.sbrt-test-btn').click(function() {
+            var bot = $(this).data('bot');
+            var resultsDiv = $('#' + bot + '-test-results');
+            var userAgent = '';
+            
+            // Get the first user agent for the bot type
+            if (bot === 'facebook') {
+                userAgent = $('textarea[name="nt_sbrt_facebook_agents"]').val().split('\n')[0];
+            } else if (bot === 'twitter') {
+                userAgent = $('textarea[name="nt_sbrt_twitter_agents"]').val().split('\n')[0];
+            } else if (bot === 'pinterest') {
+                userAgent = $('textarea[name="nt_sbrt_pinterest_agents"]').val().split('\n')[0];
+            } else if (bot.startsWith('custom-')) {
+                var index = bot.split('-')[1];
+                userAgent = $('textarea[name="nt_sbrt_custom_sites[' + index + '][agents]"]').val().split('\n')[0];
+            }
+
+            if (!userAgent) {
+                resultsDiv.prepend('<div class="sbrt-test-result error">Please configure at least one user agent.</div>');
+                return;
+            }
+
+            $(this).prop('disabled', true);
+            resultsDiv.prepend('<div class="sbrt-test-result">Testing with user agent: ' + userAgent + '</div>');
+
+            // Create a hidden iframe with modified user agent
+            var iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.onload = function() {
+                var status = this.contentWindow.document.body.innerText.includes('Too Many Requests') ? 429 : 200;
+                var statusClass = status === 429 ? 'success' : (status === 200 ? 'info' : 'error');
+                var timestamp = new Date().toLocaleString();
+                
+                resultsDiv.prepend(
+                    '<div class="sbrt-test-result ' + statusClass + '">' +
+                    '[' + timestamp + '] Status: ' + status +
+                    (status === 429 ? ' (Throttled successfully)' : '') +
+                    '</div>'
+                );
+                
+                document.body.removeChild(iframe);
+                $('.sbrt-test-btn[data-bot="' + bot + '"]').prop('disabled', false);
+            };
+            
+            // Set user agent via meta tag since we can't modify headers directly
+            var html = '<html><head><meta http-equiv="User-Agent" content="' + userAgent + '"></head><body></body></html>';
+            document.body.appendChild(iframe);
+            iframe.contentWindow.document.open();
+            iframe.contentWindow.document.write(html);
+            iframe.contentWindow.location.href = '<?php echo esc_js(home_url()); ?>';
+            iframe.contentWindow.document.close();
+        });
     });
     </script>
     <?php
