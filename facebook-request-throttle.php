@@ -11,29 +11,101 @@ if (!defined('ABSPATH')) {
     die('We\'re sorry, but you can not directly access this file.');
 }
 
-// Number of seconds permitted between each hit from different crawlers
-define('FACEBOOK_REQUEST_THROTTLE', 60.0);
-define('TWITTER_REQUEST_THROTTLE', 60.0);
-define('PINTEREST_REQUEST_THROTTLE', 60.0);
+// Default throttle values if not set in options
+define('DEFAULT_FACEBOOK_THROTTLE', 60.0);
+define('DEFAULT_TWITTER_THROTTLE', 60.0); 
+define('DEFAULT_PINTEREST_THROTTLE', 60.0);
+
+// Initialize plugin
+function nt_social_bot_throttle_init() {
+    add_action('admin_menu', 'nt_add_admin_menu');
+    add_action('admin_init', 'nt_register_settings');
+}
+add_action('init', 'nt_social_bot_throttle_init');
+
+// Add menu item
+function nt_add_admin_menu() {
+    add_options_page(
+        'Social Bot Throttle Settings',
+        'Social Bot Throttle',
+        'manage_options',
+        'social-bot-throttle',
+        'nt_settings_page'
+    );
+}
+
+// Register settings
+function nt_register_settings() {
+    register_setting('nt_social_bot_throttle', 'nt_facebook_throttle', 'floatval');
+    register_setting('nt_social_bot_throttle', 'nt_facebook_agents', 'sanitize_textarea_field');
+    register_setting('nt_social_bot_throttle', 'nt_twitter_throttle', 'floatval');
+    register_setting('nt_social_bot_throttle', 'nt_twitter_agents', 'sanitize_textarea_field');
+    register_setting('nt_social_bot_throttle', 'nt_pinterest_throttle', 'floatval');
+    register_setting('nt_social_bot_throttle', 'nt_pinterest_agents', 'sanitize_textarea_field');
+}
+
+// Settings page HTML
+function nt_settings_page() {
+    ?>
+    <div class="wrap">
+        <h1>Social Bot Throttle Settings</h1>
+        <form method="post" action="options.php">
+            <?php
+            settings_fields('nt_social_bot_throttle');
+            do_settings_sections('nt_social_bot_throttle');
+            ?>
+            <table class="form-table">
+                <tr>
+                    <th scope="row">Facebook Throttle Time (seconds)</th>
+                    <td><input type="number" step="0.1" name="nt_facebook_throttle" value="<?php echo esc_attr(get_option('nt_facebook_throttle', DEFAULT_FACEBOOK_THROTTLE)); ?>" /></td>
+                </tr>
+                <tr>
+                    <th scope="row">Facebook User Agents</th>
+                    <td><textarea name="nt_facebook_agents" rows="2"><?php echo esc_textarea(get_option('nt_facebook_agents', "meta-externalagent\nfacebookexternalhit")); ?></textarea></td>
+                </tr>
+                <tr>
+                    <th scope="row">Twitter Throttle Time (seconds)</th>
+                    <td><input type="number" step="0.1" name="nt_twitter_throttle" value="<?php echo esc_attr(get_option('nt_twitter_throttle', DEFAULT_TWITTER_THROTTLE)); ?>" /></td>
+                </tr>
+                <tr>
+                    <th scope="row">Twitter User Agents</th>
+                    <td><textarea name="nt_twitter_agents" rows="2"><?php echo esc_textarea(get_option('nt_twitter_agents', "Twitterbot")); ?></textarea></td>
+                </tr>
+                <tr>
+                    <th scope="row">Pinterest Throttle Time (seconds)</th>
+                    <td><input type="number" step="0.1" name="nt_pinterest_throttle" value="<?php echo esc_attr(get_option('nt_pinterest_throttle', DEFAULT_PINTEREST_THROTTLE)); ?>" /></td>
+                </tr>
+                <tr>
+                    <th scope="row">Pinterest User Agents</th>
+                    <td><textarea name="nt_pinterest_agents" rows="2"><?php echo esc_textarea(get_option('nt_pinterest_agents', "Pinterest")); ?></textarea></td>
+                </tr>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
+}
 
 // Bot configurations
-$GLOBALS['social_bots'] = [
-    'facebook' => [
-        'agents' => ['meta-externalagent', 'facebookexternalhit'],
-        'throttle' => FACEBOOK_REQUEST_THROTTLE,
-        'transient_key' => 'nt_facebook_last_access_time'
-    ],
-    'twitter' => [
-        'agents' => ['Twitterbot'],
-        'throttle' => TWITTER_REQUEST_THROTTLE,
-        'transient_key' => 'nt_twitter_last_access_time'
-    ],
-    'pinterest' => [
-        'agents' => ['Pinterest'],
-        'throttle' => PINTEREST_REQUEST_THROTTLE,
-        'transient_key' => 'nt_pinterest_last_access_time'
-    ]
-];
+function nt_get_social_bots_config() {
+    return [
+        'facebook' => [
+            'agents' => array_filter(explode("\n", get_option('nt_facebook_agents', "meta-externalagent\nfacebookexternalhit"))),
+            'throttle' => floatval(get_option('nt_facebook_throttle', DEFAULT_FACEBOOK_THROTTLE)),
+            'transient_key' => 'nt_facebook_last_access_time'
+        ],
+        'twitter' => [
+            'agents' => array_filter(explode("\n", get_option('nt_twitter_agents', "Twitterbot"))),
+            'throttle' => floatval(get_option('nt_twitter_throttle', DEFAULT_TWITTER_THROTTLE)),
+            'transient_key' => 'nt_twitter_last_access_time'
+        ],
+        'pinterest' => [
+            'agents' => array_filter(explode("\n", get_option('nt_pinterest_agents', "Pinterest"))),
+            'throttle' => floatval(get_option('nt_pinterest_throttle', DEFAULT_PINTEREST_THROTTLE)),
+            'transient_key' => 'nt_pinterest_last_access_time'
+        ]
+    ];
+}
 
 /**
  * Determine if the incoming request originates from a known social media crawler.
@@ -42,10 +114,11 @@ $GLOBALS['social_bots'] = [
  */
 function nt_identify_bot_request() {
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $social_bots = nt_get_social_bots_config();
     
-    foreach ($GLOBALS['social_bots'] as $bot_name => $bot_config) {
+    foreach ($social_bots as $bot_name => $bot_config) {
         foreach ($bot_config['agents'] as $agent) {
-            if (strpos($user_agent, $agent) !== false) {
+            if (strpos($user_agent, trim($agent)) !== false) {
                 return $bot_config;
             }
         }
