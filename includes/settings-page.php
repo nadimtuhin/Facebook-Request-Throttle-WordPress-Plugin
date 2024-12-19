@@ -50,6 +50,24 @@ function nt_sbrt_admin_styles($hook) {
         [],
         SBRT_VERSION
     );
+
+    // Add inline styles for checkbox and button alignment
+    $custom_css = "
+        .sbrt-field input[type='checkbox'] {
+            margin-top: 2px;
+            vertical-align: middle;
+        }
+        .button .dashicons {
+            vertical-align: middle;
+            margin-top: -2px;
+            margin-right: 3px;
+        }
+        .sbrt-test-btn {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+    ";
+    wp_add_inline_style('sbrt-admin-styles', $custom_css);
 }
 
 /**
