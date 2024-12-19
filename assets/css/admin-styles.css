@@ -1,0 +1,96 @@
+.sbrt-settings-wrap { max-width: 1200px; margin: 20px auto; }
+.sbrt-card { background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.sbrt-card h2 { margin-top: 0; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+.sbrt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.sbrt-bot-config { background: #f8f9fa; border-radius: 4px; padding: 15px; }
+.sbrt-bot-config h3 { margin-top: 0; }
+.sbrt-input { width: 100%; max-width: 300px; }
+.sbrt-textarea { width: 100%; min-height: 80px; font-family: monospace; }
+.sbrt-custom-sites { margin-top: 30px; }
+.sbrt-custom-site { 
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    margin-bottom: 20px;
+    position: relative;
+}
+.sbrt-custom-site-header {
+    border-bottom: 1px solid #e5e5e5;
+    padding: 15px;
+    background: #f5f5f5;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sbrt-custom-site-header h3 {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+}
+.sbrt-custom-site-content {
+    padding: 15px;
+    background: #fff;
+}
+.sbrt-field {
+    margin-bottom: 15px;
+}
+.sbrt-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+.sbrt-help-text { 
+    color: #666; 
+    font-size: 13px;
+    margin: 5px 0;
+}
+.sbrt-remove-btn {
+    color: #a00;
+    text-decoration: none;
+    float: right;
+}
+.sbrt-remove-btn:hover {
+    color: #dc3232;
+}
+.sbrt-add-new {
+    margin: 20px 0;
+}
+.sbrt-toggle-indicator:before {
+    content: "\f142";
+    display: inline-block;
+    font: normal 20px/1 dashicons;
+    speak: never;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-decoration: none !important;
+}
+.sbrt-custom-site.closed .sbrt-toggle-indicator:before {
+    content: "\f140";
+}
+.sbrt-custom-site.closed .sbrt-custom-site-content {
+    display: none;
+}
+.sbrt-test-results {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.sbrt-test-result {
+    margin: 5px 0;
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+}
+.sbrt-test-result.success {
+    color: #46b450;
+}
+.sbrt-test-result.error {
+    color: #dc3232;
+}
+.sbrt-test-btn {
+    margin-top: 10px !important;
+} 
