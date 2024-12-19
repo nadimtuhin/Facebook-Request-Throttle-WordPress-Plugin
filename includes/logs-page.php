@@ -37,7 +37,7 @@ function nt_sbrt_logs_page() {
     
     // Get logs with pagination
     $page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
-    $per_page = 50;
+    $per_page = 15;
     $offset = ($page - 1) * $per_page;
     
     // Get statistics
@@ -95,6 +95,32 @@ function nt_sbrt_logs_page() {
                 <p><?php _e('No throttle logs found.'); ?></p>
             </div>
         <?php else: ?>
+            <?php if ($total_pages > 1): ?>
+                <div class="tablenav bottom">
+                    <div class="tablenav-pages">
+                        <span class="displaying-num">
+                            <?php printf(
+                                /* translators: %s: Number of items */
+                                _n('%s item', '%s items', $total_items),
+                                number_format_i18n($total_items)
+                            ); ?>
+                        </span>
+                        <span class="pagination-links">
+                            <?php
+                            echo paginate_links(array(
+                                'base' => add_query_arg('paged', '%#%'),
+                                'format' => '',
+                                'prev_text' => __('&laquo;'),
+                                'next_text' => __('&raquo;'),
+                                'total' => $total_pages,
+                                'current' => $page,
+                                'add_args' => false,
+                            ));
+                            ?>
+                        </span>
+                    </div>
+                </div>
+            <?php endif; ?>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
@@ -127,32 +153,7 @@ function nt_sbrt_logs_page() {
                 </tbody>
             </table>
             
-            <?php if ($total_pages > 1): ?>
-                <div class="tablenav bottom">
-                    <div class="tablenav-pages">
-                        <span class="displaying-num">
-                            <?php printf(
-                                /* translators: %s: Number of items */
-                                _n('%s item', '%s items', $total_items),
-                                number_format_i18n($total_items)
-                            ); ?>
-                        </span>
-                        <span class="pagination-links">
-                            <?php
-                            echo paginate_links(array(
-                                'base' => add_query_arg('paged', '%#%'),
-                                'format' => '',
-                                'prev_text' => __('&laquo;'),
-                                'next_text' => __('&raquo;'),
-                                'total' => $total_pages,
-                                'current' => $page,
-                                'add_args' => false,
-                            ));
-                            ?>
-                        </span>
-                    </div>
-                </div>
-            <?php endif; ?>
+
         <?php endif; ?>
     </div>
 

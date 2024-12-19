@@ -259,8 +259,8 @@ function nt_sbrt_send_throttle_response($bot_config) {
  * @param array $bot_config
  */
 function nt_sbrt_bot_request_throttle($bot_config) {
-  // Skip throttling for image requests
-  if (nt_sbrt_is_image_request()) {
+  // Skip throttling for image requests if image throttling is not enabled
+  if (nt_sbrt_is_image_request() && empty($bot_config['throttle_images'])) {
       return;
   }
 
