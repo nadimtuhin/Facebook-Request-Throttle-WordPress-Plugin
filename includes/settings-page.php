@@ -21,6 +21,33 @@ function nt_sbrt_add_admin_menu() {
     );
 }
 
+/**
+ * Sanitize custom sites array
+ *
+ * @param array $sites Array of custom site settings
+ * @return array Sanitized settings
+ */
+function nt_sbrt_sanitize_custom_sites($sites) {
+    if (!is_array($sites)) {
+        return array();
+    }
+    
+    $sanitized = array();
+    foreach ($sites as $site) {
+        if (empty($site['name']) || empty($site['agents'])) {
+            continue;
+        }
+        
+        $sanitized[] = array(
+            'name' => sanitize_text_field($site['name']),
+            'agents' => sanitize_textarea_field($site['agents']), 
+            'throttle' => floatval($site['throttle']),
+            'throttle_images' => isset($site['throttle_images']) ? $site['throttle_images'] : '0'
+        );
+    }
+    return $sanitized;
+}
+
 // Register settings
 function nt_sbrt_register_settings() {
     register_setting('nt_sbrt_social_bot_throttle', 'nt_sbrt_facebook_throttle', 'floatval');
