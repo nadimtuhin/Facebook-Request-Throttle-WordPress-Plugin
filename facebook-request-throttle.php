@@ -10,53 +10,78 @@
  * @version   3.1-rc
  * @link      https://nadimtuhin.com
  * @license   GPL-2.0+
+ * @copyright 2024 Nadim Tuhin
  *
  * @wordpress-plugin
- * Plugin Name: Social Bot Request Throttle
- * Description: Limits the request frequency from various social media web crawlers.
- * Version:     3.1-rc
- * Author:      Nadim Tuhin
- * Author URI:  https://nadimtuhin.com
+ * Plugin Name:       Social Bot Request Throttle
+ * Plugin URI:        https://nadimtuhin.com/social-bot-throttle
+ * Description:       Limits the request frequency from various social media web crawlers.
+ * Version:           3.1-rc
+ * Requires at least: 5.2
+ * Requires PHP:      7.2
+ * Author:            Nadim Tuhin
+ * Author URI:        https://nadimtuhin.com
+ * Text Domain:       social-bot-throttle
+ * Domain Path:       /languages
+ * License:           GPL v2 or later
+ * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  */
 
-// Exit if accessed directly
-if (!defined('ABSPATH')) {
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Define plugin constants
-if (!defined('SBRT_VERSION')) {
-    define('SBRT_VERSION', '3.1-rc');
+// Define plugin constants.
+if ( ! defined( 'SBRT_VERSION' ) ) {
+    define( 'SBRT_VERSION', '3.1-rc' );
 }
 
-if (!defined('SBRT_PLUGIN_DIR')) {
-    define('SBRT_PLUGIN_DIR', plugin_dir_path(__FILE__));
+if ( ! defined( 'SBRT_PLUGIN_DIR' ) ) {
+    define( 'SBRT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 }
 
-if (!defined('SBRT_PLUGIN_URL')) {
-    define('SBRT_PLUGIN_URL', plugin_dir_url(__FILE__));
+if ( ! defined( 'SBRT_PLUGIN_URL' ) ) {
+    define( 'SBRT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 }
 
-// Default throttle values
-if (!defined('DEFAULT_FACEBOOK_THROTTLE')) {
-    define('DEFAULT_FACEBOOK_THROTTLE', 60.0);
+// Default throttle values.
+if ( ! defined( 'DEFAULT_FACEBOOK_THROTTLE' ) ) {
+    define( 'DEFAULT_FACEBOOK_THROTTLE', 60.0 );
 }
-if (!defined('DEFAULT_TWITTER_THROTTLE')) {
-    define('DEFAULT_TWITTER_THROTTLE', 60.0);
+if ( ! defined( 'DEFAULT_TWITTER_THROTTLE' ) ) {
+    define( 'DEFAULT_TWITTER_THROTTLE', 60.0 );
 }
-if (!defined('DEFAULT_PINTEREST_THROTTLE')) {
-    define('DEFAULT_PINTEREST_THROTTLE', 60.0);
+if ( ! defined( 'DEFAULT_PINTEREST_THROTTLE' ) ) {
+    define( 'DEFAULT_PINTEREST_THROTTLE', 60.0 );
 }
-if (!defined('DEFAULT_CUSTOM_THROTTLE')) {
-    define('DEFAULT_CUSTOM_THROTTLE', 60.0);
+if ( ! defined( 'DEFAULT_CUSTOM_THROTTLE' ) ) {
+    define( 'DEFAULT_CUSTOM_THROTTLE', 60.0 );
 }
 
+/**
+ * Load plugin textdomain.
+ *
+ * @since 3.1-rc
+ */
+function nt_sbrt_load_textdomain() {
+    load_plugin_textdomain( 'social-bot-throttle', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+}
+add_action( 'init', 'nt_sbrt_load_textdomain' );
+
+// Load required files.
 require_once SBRT_PLUGIN_DIR . 'includes/deactivation.php';
 
-// Load admin functionality
-add_action('plugins_loaded', 'nt_sbrt_load_admin');
+// Load admin functionality.
+add_action( 'plugins_loaded', 'nt_sbrt_load_admin' );
+
+/**
+ * Load admin functionality.
+ *
+ * @since 3.1-rc
+ */
 function nt_sbrt_load_admin() {
-    if (is_admin()) {
+    if ( is_admin() ) {
         require_once SBRT_PLUGIN_DIR . 'includes/settings-page.php';
         require_once SBRT_PLUGIN_DIR . 'includes/logs-page.php';
     }
@@ -205,14 +230,15 @@ function nt_sbrt_set_last_access_time($transient_key, $current_time, $throttle_t
 }
 
 /**
- * Log throttled request
+ * Log throttled request.
  * 
- * @param array $bot_config Bot configuration
- * @param string $request_uri Request URI
- * @param string $user_agent User agent string
- * @param string $status Request status (allowed/denied)
+ * @since 3.1-rc
+ * @param array  $bot_config   Bot configuration.
+ * @param string $request_uri  Request URI.
+ * @param string $user_agent   User agent string.
+ * @param string $status       Request status (allowed/denied).
  */
-function nt_sbrt_log_throttled_request($bot_config, $request_uri = '', $user_agent = '', $status = 'denied') {
+function nt_sbrt_log_throttled_request( $bot_config, $request_uri = '', $user_agent = '', $status = 'denied' ) {
     global $wpdb;
     
     $table_name = $wpdb->prefix . 'sbrt_throttle_log';
@@ -220,36 +246,41 @@ function nt_sbrt_log_throttled_request($bot_config, $request_uri = '', $user_age
     $wpdb->insert(
         $table_name,
         array(
-            'bot_name' => $bot_config['name'],
-            'request_uri' => $request_uri ? $request_uri : $_SERVER['REQUEST_URI'],
-            'user_agent' => $user_agent ? $user_agent : $_SERVER['HTTP_USER_AGENT'],
-            'status' => $status,
-            'timestamp' => current_time('mysql')
+            'bot_name'    => sanitize_text_field( $bot_config['name'] ),
+            'request_uri' => sanitize_text_field( $request_uri ? $request_uri : $_SERVER['REQUEST_URI'] ),
+            'user_agent'  => sanitize_text_field( $user_agent ? $user_agent : $_SERVER['HTTP_USER_AGENT'] ),
+            'status'      => sanitize_text_field( $status ),
+            'timestamp'   => current_time( 'mysql' )
         ),
-        array('%s', '%s', '%s', '%s', '%s')
+        array( '%s', '%s', '%s', '%s', '%s' )
     );
 }
 
 /**
- * Send throttle response
+ * Send throttle response.
  *
- * @param array $bot_config Bot configuration
+ * @since 3.1-rc
+ * @param array $bot_config Bot configuration.
  */
-function nt_sbrt_send_throttle_response($bot_config) {
-    if (!is_array($bot_config) || empty($bot_config['name'])) {
+function nt_sbrt_send_throttle_response( $bot_config ) {
+    if ( ! is_array( $bot_config ) || empty( $bot_config['name'] ) ) {
         return;
     }
     
-    // Log the throttled request
-    nt_sbrt_log_throttled_request($bot_config);
+    // Log the throttled request.
+    nt_sbrt_log_throttled_request( $bot_config );
     
-    status_header(429);
-    header('Retry-After: 60');
-    error_log(sprintf('SBRT: Too Many Requests for %s', $bot_config['name']));
+    status_header( 429 );
+    header( 'Retry-After: 60' );
+    error_log( sprintf( 'SBRT: Too Many Requests for %s', esc_html( $bot_config['name'] ) ) );
     wp_die(
-        sprintf('Too Many Requests for %s', esc_html($bot_config['name'])),
-        'Too Many Requests',
-        array('response' => 429)
+        sprintf( 
+            /* translators: %s: Bot name */
+            esc_html__( 'Too Many Requests for %s', 'social-bot-throttle' ), 
+            esc_html( $bot_config['name'] )
+        ),
+        esc_html__( 'Too Many Requests', 'social-bot-throttle' ),
+        array( 'response' => 429 )
     );
 }
 
