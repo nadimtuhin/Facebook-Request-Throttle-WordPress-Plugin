@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Bot Request Throttle - WordPress Plugin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Hero Section -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-xl font-bold">SBRT</div>
+            <div class="space-x-4">
+                <a href="#features" class="hover:text-blue-200">Features</a>
+                <a href="#installation" class="hover:text-blue-200">Installation</a>
+                <a href="#configuration" class="hover:text-blue-200">Configuration</a>
+                <a href="https://github.com/nadimtuhin/social-bot-throttle" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50">GitHub</a>
+            </div>
+        </nav>
+        
+        <div class="container mx-auto px-6 py-20">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div>
+                    <h1 class="text-5xl font-bold mb-4">Social Bot Request Throttle</h1>
+                    <p class="text-xl mb-8">A WordPress plugin to limit request frequency from social media web crawlers</p>
+                    <div class="space-x-4">
+                        <button id="downloadBtn" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </button>
+                        <button id="demoBtn" class="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
+                            <i class="fas fa-play mr-2"></i>View Demo
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-8 md:mt-0 md:ml-8">
+                    <img src="screenshot.png" alt="Plugin Screenshot" class="rounded-lg shadow-xl max-w-md w-full">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-12">Key Features</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <i class="fas fa-tachometer-alt text-3xl text-blue-600 mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Throttle Control</h3>
+                    <p class="text-gray-600">Configure throttle times for Facebook, Twitter, Pinterest, and custom bots</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <i class="fas fa-cogs text-3xl text-blue-600 mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Customizable</h3>
+                    <p class="text-gray-600">Set custom user agent detection and image request throttling for each crawler</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <i class="fas fa-chart-line text-3xl text-blue-600 mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Monitoring</h3>
+                    <p class="text-gray-600">Comprehensive logging capabilities and built-in testing tools</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Section -->
+    <section id="installation" class="bg-gray-100 py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-12">Installation</h2>
+            <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <span class="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-4">1</span>
+                        <p>Download the plugin code</p>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-4">2</span>
+                        <p>Upload to <code class="bg-gray-100 px-2 py-1 rounded">/wp-content/plugins/</code></p>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center mr-4">3</span>
+                        <p>Activate through WordPress plugins menu</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Configuration Section -->
+    <section id="configuration" class="py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-12">Configuration</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Default Settings</h3>
+                    <ul class="space-y-2">
+                        <li><i class="fab fa-facebook text-blue-600 mr-2"></i>Facebook: 60 seconds</li>
+                        <li><i class="fab fa-twitter text-blue-400 mr-2"></i>Twitter: 60 seconds</li>
+                        <li><i class="fab fa-pinterest text-red-600 mr-2"></i>Pinterest: 60 seconds</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Customization Options</h3>
+                    <ul class="space-y-2">
+                        <li><i class="fas fa-clock mr-2 text-green-600"></i>Throttle time in seconds</li>
+                        <li><i class="fas fa-user-agent mr-2 text-purple-600"></i>User agent strings</li>
+                        <li><i class="fas fa-image mr-2 text-yellow-600"></i>Image request throttling</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p>Created by <a href="https://nadimtuhin.com" class="text-blue-400 hover:text-blue-300">Nadim Tuhin</a></p>
+            <p class="mt-2">Licensed under GPL-2.0+</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Download button click handler
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            window.location.href = 'https://github.com/nadimtuhin/social-bot-throttle/archive/refs/heads/main.zip';
+        });
+
+        // Demo button click handler
+        document.getElementById('demoBtn').addEventListener('click', function() {
+            window.location.href = 'https://demo-url.com';
+        });
+
+        // Add scroll animation for features
+        const animateOnScroll = () => {
+            const features = document.querySelectorAll('#features .bg-white');
+            features.forEach(feature => {
+                const featureTop = feature.getBoundingClientRect().top;
+                if (featureTop < window.innerHeight - 100) {
+                    feature.style.opacity = '1';
+                    feature.style.transform = 'translateY(0)';
+                }
+            });
+        };
+
+        // Initial styles for features
+        document.querySelectorAll('#features .bg-white').forEach(feature => {
+            feature.style.opacity = '0';
+            feature.style.transform = 'translateY(20px)';
+            feature.style.transition = 'all 0.5s ease-out';
+        });
+
+        // Add scroll event listener
+        window.addEventListener('scroll', animateOnScroll);
+        // Initial check for elements in view
+        animateOnScroll();
+    </script>
+</body>
+</html>
