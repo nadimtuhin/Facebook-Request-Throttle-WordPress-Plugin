@@ -417,6 +417,67 @@ function nt_sbrt_settings_page() {
                 });
             });
         }
+
+      // Test button functionality
+      $('.sbrt-test-btn').click(function() {
+          var bot = $(this).data('bot');
+          var resultsDiv = $('#' + bot + '-test-results');
+          var userAgent = '';
+          
+          // Get the first user agent for the bot type
+          if (bot === 'facebook') {
+              userAgent = $('textarea[name="nt_sbrt_facebook_agents"]').val().split('\n')[0];
+          } else if (bot === 'twitter') {
+              userAgent = $('textarea[name="nt_sbrt_twitter_agents"]').val().split('\n')[0];
+          } else if (bot === 'pinterest') {
+              userAgent = $('textarea[name="nt_sbrt_pinterest_agents"]').val().split('\n')[0];
+          } else if (bot.startsWith('custom-')) {
+              var index = bot.split('-')[1];
+              userAgent = $('textarea[name="nt_sbrt_custom_sites[' + index + '][agents]"]').val().split('\n')[0];
+          }
+
+          if (!userAgent) {
+              resultsDiv.prepend('<div class="sbrt-test-result error">Please configure at least one user agent.</div>');
+              return;
+          }
+
+          $(this).prop('disabled', true);
+          resultsDiv.prepend('<div class="sbrt-test-result">Testing with user agent: ' + userAgent + '</div>');
+
+          $.ajax({
+              url: ajaxurl,
+              type: 'POST',
+              data: {
+                  action: 'sbrt_test_bot',
+                  nonce: '<?php echo wp_create_nonce('sbrt_test_bot'); ?>',
+                  user_agent: userAgent
+              },
+              success: function(response) {
+                  var status = response.data.status;
+                  var statusClass = status === 429 ? 'success' : (status === 200 ? 'info' : 'error');
+                  var timestamp = new Date().toLocaleString();
+                  
+                  resultsDiv.prepend(
+                      '<div class="sbrt-test-result ' + statusClass + '">' +
+                      '[' + timestamp + '] Status: ' + status +
+                      (status === 429 ? ' (Throttled successfully)' : '') +
+                      '</div>'
+                  );
+              },
+              error: function(xhr) {
+                  var timestamp = new Date().toLocaleString();
+                  resultsDiv.prepend(
+                      '<div class="sbrt-test-result error">' +
+                      '[' + timestamp + '] Error: Failed to test bot' +
+                      '</div>'
+                  );
+              },
+              complete: function() {
+                  $('.sbrt-test-btn[data-bot="' + bot + '"]').prop('disabled', false);
+              }
+          });
+      });
+
     });
     </script>
     <?php
