@@ -1,0 +1,14 @@
+{
+  "name": "facebook-request-throttle",
+  "description": "WordPress plugin — limits Facebook/Meta crawler request frequency",
+  "private": true,
+  "scripts": {
+    "test":   "composer test",
+    "lint":   "composer exec -- phpcs",
+    "lint:fix": "composer exec -- phpcbf",
+    "check":  "composer exec -- phpcs && composer test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
