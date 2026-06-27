@@ -7,7 +7,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [3.0] — 2025-06-28
+## [3.0] — 2026-06-28
 
 ### Added
 - **WP auto-update integration** — plugin now appears in WordPress's native update system
@@ -17,31 +17,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `nt_inject_plugin_update()` — hooks `pre_set_site_transient_update_plugins` to inject GitHub release
 - `nt_auto_update_policy()` — hooks `auto_update_plugin` to allow minors, block majors
 - `nt_is_major_upgrade()` — compares major version segments
-- 10 new PHPUnit tests (54 total)
 
 ### Changed
 - Admin notice now only fires on **major** version bumps; minor updates are silent
 
 ---
 
-## [2.9] — 2025-06-28
+## [2.9] — 2026-06-28
 
 ### Added
 - GitHub update checker: `nt_check_github_for_update()` hits the GitHub releases API and caches the result for 12 hours via a WP transient
 - `nt_maybe_show_update_notice()` hooked to `admin_notices` — shows a warning banner (visible only to users with `update_plugins` capability) when a newer version is available on GitHub
 - `NT_PLUGIN_VERSION` constant for consistent version comparisons across the plugin
-- 8 new PHPUnit tests covering: version parse, `v`-prefix strip, HTTP error, 403, missing tag, transient cache hit, notice hidden when current, notice shown when outdated
 
 ### Changed
 - Tested up to WordPress 7.0 (55% market share as of June 2025)
-- Stable tag bumped to 2.9
 
 ### Upgrade Notice
 No breaking changes. Existing installations will automatically begin showing update notices when a new GitHub release is published.
 
 ---
 
-## [2.8] — 2024-06-28
+## [2.8] — 2026-06-28
 
 ### Added
 - `package.json` — run tests and linting via npm, pnpm, or yarn
@@ -52,7 +49,7 @@ No breaking changes. Existing installations will automatically begin showing upd
 
 ---
 
-## [2.7] — 2024-06-28
+## [2.7] — 2026-06-28
 
 ### Added
 - WP-CLI command group `wp fb-throttle`:
@@ -61,11 +58,10 @@ No breaking changes. Existing installations will automatically begin showing upd
   - `wp fb-throttle clear` — clear the hit log
   - `wp fb-throttle duration [seconds]` — get or set throttle duration
 - `.phpcs.xml` ruleset — PHPCS now runs consistently via `npm run lint`
-- 7 new unit tests (36 total, 48 assertions)
 
 ---
 
-## [2.6] — 2024-06-28
+## [2.6] — 2026-06-27
 
 ### Added
 - Throttle duration now configurable from **Settings → FB Throttle Log** — no code changes needed
@@ -81,7 +77,7 @@ Fully backward compatible. Existing `FACEBOOK_REQUEST_THROTTLE` defines in `wp-c
 
 ---
 
-## [2.5] — 2024-06-28
+## [2.5] — 2026-06-27
 
 ### Changed
 - Applied full WordPress coding standards throughout:
@@ -94,7 +90,7 @@ Fully backward compatible. Existing `FACEBOOK_REQUEST_THROTTLE` defines in `wp-c
 
 ---
 
-## [2.4] — 2024-06-28
+## [2.4] — 2026-06-27
 
 ### Added
 - Admin hit log page under **Settings → FB Throttle Log** — see the last 100 allowed/throttled hits with timestamp, IP, URI, and user agent
@@ -112,6 +108,8 @@ See the [commit history](https://github.com/nadimtuhin/Facebook-Request-Throttle
 
 ---
 
+[3.0]: https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/tag/v3.0
+[2.9]: https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/tag/v2.9
 [2.8]: https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/tag/v2.8
 [2.7]: https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/tag/v2.7
 [2.6]: https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/tag/v2.6
