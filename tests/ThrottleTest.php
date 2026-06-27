@@ -132,6 +132,59 @@ class ThrottleTest extends TestCase
         $this->assertFalse($GLOBALS['_nt_die_called']);
     }
 
+    // ── Throttle duration (configurable) ─────────────────────────────────────
+
+    public function test_default_throttle_duration_is_60(): void
+    {
+        // No option set — should fall back to constant (60)
+        $this->assertSame(60.0, nt_get_throttle_duration());
+    }
+
+    public function test_dashboard_setting_overrides_constant(): void
+    {
+        $GLOBALS['_nt_options']['nt_throttle_duration'] = '120';
+        $this->assertSame(120.0, nt_get_throttle_duration());
+    }
+
+    public function test_sanitize_clamps_below_minimum(): void
+    {
+        $this->assertSame(1, nt_sanitize_throttle_duration(0));
+        $this->assertSame(1, nt_sanitize_throttle_duration(-50));
+    }
+
+    public function test_sanitize_clamps_above_maximum(): void
+    {
+        $this->assertSame(86400, nt_sanitize_throttle_duration(99999));
+    }
+
+    public function test_sanitize_casts_to_int(): void
+    {
+        $this->assertSame(45, nt_sanitize_throttle_duration('45.9'));
+    }
+
+    public function test_throttle_respects_configured_duration(): void
+    {
+        // Set duration to 30s; last hit was 20s ago — should throttle
+        $GLOBALS['_nt_options']['nt_throttle_duration'] = '30';
+        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 20;
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/wp_die:429/');
+
+        nt_facebook_request_throttle();
+    }
+
+    public function test_throttle_allows_after_configured_duration(): void
+    {
+        // Set duration to 30s; last hit was 35s ago — should allow
+        $GLOBALS['_nt_options']['nt_throttle_duration'] = '30';
+        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 35;
+
+        nt_facebook_request_throttle();
+
+        $this->assertFalse($GLOBALS['_nt_die_called']);
+    }
+
     // ── Logging ───────────────────────────────────────────────────────────────
 
     public function test_allowed_hit_creates_log_entry(): void
