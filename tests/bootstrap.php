@@ -57,6 +57,7 @@ function esc_html_e(string $s): void { echo htmlspecialchars($s, ENT_QUOTES); }
 function esc_attr_e(string $s): void { echo htmlspecialchars($s, ENT_QUOTES | ENT_HTML401); }
 function esc_html__(string $s): string { return $s; }
 function printf_esc(string $fmt, mixed ...$args): void { printf($fmt, ...$args); }
+function wp_parse_url(string $url, int $component = -1): mixed { return parse_url($url, $component); }
 
 function status_header(int $code): void
 {

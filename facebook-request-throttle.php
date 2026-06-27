@@ -6,6 +6,8 @@
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
  * License:     MIT
+ *
+ * @package FacebookRequestThrottle
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,7 +20,9 @@ if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE' ) ) {
 }
 
 // Max log entries to keep.
-define( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100 );
+if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT' ) ) {
+	define( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100 );
+}
 
 /**
  * User agents to throttle. Add additional substrings here.
@@ -73,7 +77,7 @@ function nt_is_request_from_facebook() {
  * @return bool
  */
 function nt_is_image_request() {
-	$request_path   = parse_url( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '', PHP_URL_PATH ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+	$request_path   = wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '', PHP_URL_PATH ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 	$file_extension = strtolower( pathinfo( $request_path, PATHINFO_EXTENSION ) );
 	return in_array( $file_extension, array( 'jpg', 'jpeg', 'png', 'gif', 'webp' ), true );
 }

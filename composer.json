@@ -1,7 +1,10 @@
 {
     "name": "nadimtuhin/facebook-request-throttle",
     "require-dev": {
-        "phpunit/phpunit": "^10"
+        "phpunit/phpunit": "^10",
+        "squizlabs/php_codesniffer": "*",
+        "wp-coding-standards/wpcs": "*",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.2"
     },
     "authors": [
         {
@@ -9,8 +12,12 @@
             "email": "nadimtuhin@gmail.com"
         }
     ],
-    "require": {},
     "scripts": {
         "test": "phpunit"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
     }
 }
