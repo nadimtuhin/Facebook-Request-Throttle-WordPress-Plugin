@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Facebook Request Throttle
  * Description: Limits the request frequency from Facebook's web crawler.
- * Version: 2.3
+ * Version: 2.4
  * Author: Nadim Tuhin
  * Author URI: https://nadimtuhin.com
  */
@@ -14,36 +14,31 @@ if (!defined('ABSPATH')) {
 // Number of seconds permitted between each hit from meta-externalagent / facebookexternalhit
 define('FACEBOOK_REQUEST_THROTTLE', 60.0);
 
+// Max log entries to keep
+define('FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100);
+
 /**
  * Check if the request is from Facebook's web crawler
- * 
- * @return bool
  */
 function nt_isRequestFromFacebook() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     return !empty($userAgent) && (
-        strpos($userAgent, 'meta-externalagent') !== false || 
+        strpos($userAgent, 'meta-externalagent') !== false ||
         strpos($userAgent, 'facebookexternalhit') !== false
     );
 }
 
 /**
  * Check if the request is for an image file
- * 
- * @return bool 
  */
 function nt_isImageRequest() {
     $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     $fileExtension = strtolower(pathinfo($requestPath, PATHINFO_EXTENSION));
-    $allowedImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    
-    return in_array($fileExtension, $allowedImageExtensions);
+    return in_array($fileExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 }
 
 /**
  * Get the last access time of Facebook's web crawler
- * 
- * @return float|null
  */
 function nt_getLastAccessTime() {
     return get_transient('nt_facebook_last_access_time');
@@ -51,43 +46,53 @@ function nt_getLastAccessTime() {
 
 /**
  * Set the last access time of Facebook's web crawler
- * 
- * @param float $currentTime
- * @return bool
  */
 function nt_setLastAccessTime($currentTime) {
-    // Set the transient to last just slightly longer than the throttle time
     return set_transient(
-        'nt_facebook_last_access_time', 
-        $currentTime, 
+        'nt_facebook_last_access_time',
+        $currentTime,
         FACEBOOK_REQUEST_THROTTLE + 1
     );
+}
+
+/**
+ * Append an entry to the admin-visible hit log (capped at LOG_LIMIT entries).
+ *
+ * @param string $status  'allowed' or 'throttled'
+ */
+function nt_log($status) {
+    $log = get_option('nt_facebook_throttle_log', []);
+    array_unshift($log, [
+        'time'   => current_time('mysql'),
+        'ip'     => $_SERVER['REMOTE_ADDR'] ?? '',
+        'ua'     => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'uri'    => $_SERVER['REQUEST_URI'] ?? '',
+        'status' => $status,
+    ]);
+    // Cap to limit
+    $log = array_slice($log, 0, FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT);
+    update_option('nt_facebook_throttle_log', $log, false);
 }
 
 /**
  * Throttle Facebook crawler requests to prevent overload
  */
 function nt_facebookRequestThrottle() {
-    // Skip throttling for image requests
     if (nt_isImageRequest()) {
         return;
     }
 
     $lastAccessTime = nt_getLastAccessTime();
-    $currentTime = microtime(TRUE);
+    $currentTime    = microtime(true);
 
-    // Check if we need to throttle
-    if (!$lastAccessTime) {
-        error_log("No last access time found.");
-    } elseif ($currentTime - $lastAccessTime < FACEBOOK_REQUEST_THROTTLE) {
+    if ($lastAccessTime && ($currentTime - $lastAccessTime < FACEBOOK_REQUEST_THROTTLE)) {
+        nt_log('throttled');
         nt_sendThrottleResponse();
+        // nt_sendThrottleResponse calls wp_die() — execution stops here
     }
-    
-    // Attempt to set last access time
-    if (!nt_setLastAccessTime($currentTime)) {
-        error_log("Failed to set last access time for Facebook web crawler.");
-        nt_sendThrottleResponse();
-    }
+
+    nt_setLastAccessTime($currentTime);
+    nt_log('allowed');
 }
 
 /**
@@ -103,7 +108,78 @@ function nt_sendThrottleResponse() {
     );
 }
 
-// Main logic - only run throttle check for Facebook requests
+// ── Admin log page ────────────────────────────────────────────────────────────
+
+function nt_admin_menu() {
+    add_options_page(
+        'Facebook Throttle Log',
+        'FB Throttle Log',
+        'manage_options',
+        'nt-facebook-throttle-log',
+        'nt_render_log_page'
+    );
+}
+add_action('admin_menu', 'nt_admin_menu');
+
+function nt_render_log_page() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    // Clear log action
+    if (isset($_POST['nt_clear_log']) && check_admin_referer('nt_clear_log')) {
+        delete_option('nt_facebook_throttle_log');
+        echo '<div class="updated"><p>Log cleared.</p></div>';
+    }
+
+    $log = get_option('nt_facebook_throttle_log', []);
+    ?>
+    <div class="wrap">
+        <h1>Facebook Request Throttle — Hit Log</h1>
+        <p>Shows the last <?php echo FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT; ?> requests from Facebook crawlers (<code>facebookexternalhit</code> / <code>meta-externalagent</code>).</p>
+        <form method="post">
+            <?php wp_nonce_field('nt_clear_log'); ?>
+            <input type="submit" name="nt_clear_log" class="button" value="Clear Log">
+        </form>
+        <br>
+        <?php if (empty($log)): ?>
+            <p>No hits recorded yet.</p>
+        <?php else: ?>
+            <table class="widefat striped">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>IP</th>
+                        <th>URI</th>
+                        <th>User Agent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($log as $entry): ?>
+                        <tr>
+                            <td><?php echo esc_html($entry['time']); ?></td>
+                            <td>
+                                <?php if ($entry['status'] === 'throttled'): ?>
+                                    <span style="color:red;font-weight:bold">throttled (429)</span>
+                                <?php else: ?>
+                                    <span style="color:green">allowed (200)</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo esc_html($entry['ip']); ?></td>
+                            <td><?php echo esc_html($entry['uri']); ?></td>
+                            <td><?php echo esc_html($entry['ua']); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
 if (nt_isRequestFromFacebook()) {
-  nt_facebookRequestThrottle();
+    nt_facebookRequestThrottle();
 }
