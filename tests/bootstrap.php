@@ -49,6 +49,14 @@ function add_options_page(): void {}
 function wp_nonce_field(): void {}
 function check_admin_referer(string $action): bool { return true; }
 function esc_html(string $s): string { return htmlspecialchars($s, ENT_QUOTES); }
+function register_setting(string $group, string $option, array $args = []): void {}
+function settings_fields(string $group): void {}
+function submit_button(): void {}
+function esc_attr(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_HTML401); }
+function esc_html_e(string $s): void { echo htmlspecialchars($s, ENT_QUOTES); }
+function esc_attr_e(string $s): void { echo htmlspecialchars($s, ENT_QUOTES | ENT_HTML401); }
+function esc_html__(string $s): string { return $s; }
+function printf_esc(string $fmt, mixed ...$args): void { printf($fmt, ...$args); }
 
 function status_header(int $code): void
 {
