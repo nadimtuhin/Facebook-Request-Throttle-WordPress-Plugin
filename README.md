@@ -12,6 +12,18 @@ Facebook's web crawlers (`facebookexternalhit` and `meta-externalagent`) can ham
 
 ---
 
+## Requirements
+
+| Requirement | Minimum | Recommended |
+|---|---|---|
+| PHP | 7.4 | 8.2 or 8.3 |
+| WordPress | 5.0 | 7.0 (latest) |
+| MySQL / MariaDB | 5.5.5 / 10.0 | 8.0 / 10.6 |
+
+Tested on PHP 7.4, 8.0, 8.1, 8.2, 8.3 and WordPress 5.0 – 7.0.
+
+---
+
 ## Features
 
 - **Throttles** `facebookexternalhit` and `meta-externalagent` user agents
