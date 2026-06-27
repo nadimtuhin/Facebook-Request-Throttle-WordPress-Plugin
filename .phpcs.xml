@@ -1,9 +1,8 @@
 <?xml version="1.0"?>
 <ruleset name="Facebook Request Throttle">
-    <description>WordPress coding standards for a single-file plugin.</description>
+    <description>WordPress coding standards for the plugin file only. Test stubs use PSR-2 and are excluded.</description>
 
     <file>facebook-request-throttle.php</file>
-    <file>tests/</file>
 
     <arg name="extensions" value="php"/>
 
@@ -19,4 +18,7 @@
     <rule ref="Universal.Files.SeparateFunctionsFromOO">
         <exclude-pattern>facebook-request-throttle.php</exclude-pattern>
     </rule>
+
+    <!-- Test stubs are PSR-2, not WordPress style — exclude entirely -->
+    <exclude-pattern>tests/</exclude-pattern>
 </ruleset>
