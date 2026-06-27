@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Facebook Request Throttle
- * Description: Limits the request frequency from Facebook's web crawler.
- * Version: 2.4
+ * Description: Limits the request frequency from Facebook's web crawler and other configurable user agents.
+ * Version: 2.5
  * Author: Nadim Tuhin
  * Author URI: https://nadimtuhin.com
  */
@@ -11,25 +11,42 @@ if (!defined('ABSPATH')) {
     die('We\'re sorry, but you can not directly access this file.');
 }
 
-// Number of seconds permitted between each hit from meta-externalagent / facebookexternalhit
+// Number of seconds permitted between each hit
 define('FACEBOOK_REQUEST_THROTTLE', 60.0);
 
 // Max log entries to keep
 define('FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100);
 
 /**
- * Check if the request is from Facebook's web crawler
+ * User agents to throttle. Add additional strings here.
+ * Each entry is a substring match against the HTTP_USER_AGENT header.
+ */
+$nt_user_agents_to_throttle = [
+    'meta-externalagent',
+    'facebookexternalhit',
+];
+
+/**
+ * Check if the current request is from any of the configured user agents.
+ *
+ * @return bool
  */
 function nt_isRequestFromFacebook() {
+    global $nt_user_agents_to_throttle;
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    return !empty($userAgent) && (
-        strpos($userAgent, 'meta-externalagent') !== false ||
-        strpos($userAgent, 'facebookexternalhit') !== false
-    );
+    if (empty($userAgent)) {
+        return false;
+    }
+    foreach ($nt_user_agents_to_throttle as $agent) {
+        if (strpos($userAgent, $agent) !== false) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
- * Check if the request is for an image file
+ * Check if the request is for an image file.
  */
 function nt_isImageRequest() {
     $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -38,14 +55,14 @@ function nt_isImageRequest() {
 }
 
 /**
- * Get the last access time of Facebook's web crawler
+ * Get the last access time of the throttled crawler.
  */
 function nt_getLastAccessTime() {
     return get_transient('nt_facebook_last_access_time');
 }
 
 /**
- * Set the last access time of Facebook's web crawler
+ * Set the last access time of the throttled crawler.
  */
 function nt_setLastAccessTime($currentTime) {
     return set_transient(
@@ -75,7 +92,7 @@ function nt_log($status) {
 }
 
 /**
- * Throttle Facebook crawler requests to prevent overload
+ * Throttle crawler requests to prevent overload.
  */
 function nt_facebookRequestThrottle() {
     if (nt_isImageRequest()) {
@@ -96,7 +113,7 @@ function nt_facebookRequestThrottle() {
 }
 
 /**
- * Send throttle response with appropriate headers
+ * Send throttle response with appropriate headers.
  */
 function nt_sendThrottleResponse() {
     status_header(429);
@@ -136,7 +153,7 @@ function nt_render_log_page() {
     ?>
     <div class="wrap">
         <h1>Facebook Request Throttle — Hit Log</h1>
-        <p>Shows the last <?php echo FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT; ?> requests from Facebook crawlers (<code>facebookexternalhit</code> / <code>meta-externalagent</code>).</p>
+        <p>Shows the last <?php echo FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT; ?> requests from configured crawlers.</p>
         <form method="post">
             <?php wp_nonce_field('nt_clear_log'); ?>
             <input type="submit" name="nt_clear_log" class="button" value="Clear Log">
