@@ -5,7 +5,8 @@
  * Version:     3.0
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
- * License:     MIT
+ * License:     GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  *
  * @package FacebookRequestThrottle
  */
@@ -72,7 +73,7 @@ function nt_is_request_from_facebook() {
 	if ( empty( $nt_user_agents_to_throttle ) ) {
 		$nt_user_agents_to_throttle = array( 'meta-externalagent', 'facebookexternalhit' );
 	}
-	$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? $_SERVER['HTTP_USER_AGENT'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+	$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
 	if ( empty( $user_agent ) ) {
 		return false;
 	}
@@ -90,7 +91,7 @@ function nt_is_request_from_facebook() {
  * @return bool
  */
 function nt_is_image_request() {
-	$request_path   = wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '', PHP_URL_PATH ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+	$request_path   = wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '', PHP_URL_PATH );
 	$file_extension = strtolower( pathinfo( $request_path, PATHINFO_EXTENSION ) );
 	return in_array( $file_extension, array( 'jpg', 'jpeg', 'png', 'gif', 'webp' ), true );
 }
@@ -129,9 +130,9 @@ function nt_log( $status ) {
 		$log,
 		array(
 			'time'   => current_time( 'mysql' ),
-			'ip'     => isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '',          // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-			'ua'     => isset( $_SERVER['HTTP_USER_AGENT'] ) ? $_SERVER['HTTP_USER_AGENT'] : '',  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-			'uri'    => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '',          // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			'ip'     => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
+			'ua'     => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+			'uri'    => isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '',
 			'status' => $status,
 		)
 	);

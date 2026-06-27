@@ -65,6 +65,8 @@ function esc_attr_e(string $s): void { echo htmlspecialchars($s, ENT_QUOTES | EN
 function esc_html__(string $s): string { return $s; }
 function printf_esc(string $fmt, mixed ...$args): void { printf($fmt, ...$args); }
 function wp_parse_url(string $url, int $component = -1): mixed { return parse_url($url, $component); }
+function wp_unslash(mixed $value): mixed { return is_string($value) ? stripslashes($value) : $value; }
+function sanitize_text_field(string $str): string { return trim(strip_tags($str)); }
 
 // WP-CLI stubs — only defined when tests opt-in via $GLOBALS['_nt_test_wpcli']
 if ( ! class_exists( 'WP_CLI' ) ) {
