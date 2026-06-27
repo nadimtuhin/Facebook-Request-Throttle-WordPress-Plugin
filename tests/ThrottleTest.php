@@ -525,4 +525,25 @@ class ThrottleTest extends TestCase
 
         $this->assertEmpty($output);
     }
+
+    /** @test */
+    public function test_legacy_constant_inherited_by_nt_constant(): void
+    {
+        // NT_FACEBOOK_REQUEST_THROTTLE must equal the legacy constant value.
+        // If the user set FACEBOOK_REQUEST_THROTTLE before the plugin loaded,
+        // NT_FACEBOOK_REQUEST_THROTTLE must reflect that value.
+        $this->assertSame(
+            (float) FACEBOOK_REQUEST_THROTTLE,
+            (float) NT_FACEBOOK_REQUEST_THROTTLE
+        );
+    }
+
+    /** @test */
+    public function test_legacy_log_limit_constant_inherited(): void
+    {
+        $this->assertSame(
+            (int) FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT,
+            (int) NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT
+        );
+    }
 }

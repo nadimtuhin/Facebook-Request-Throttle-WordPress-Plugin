@@ -19,18 +19,17 @@ if ( ! defined( 'NT_PLUGIN_VERSION' ) ) {
 }
 
 // Canonical prefixed constants.
+// If the user already defined the legacy name in wp-config.php, inherit that value.
 if ( ! defined( 'NT_FACEBOOK_REQUEST_THROTTLE' ) ) {
-	define( 'NT_FACEBOOK_REQUEST_THROTTLE', 60.0 );
+	define( 'NT_FACEBOOK_REQUEST_THROTTLE', defined( 'FACEBOOK_REQUEST_THROTTLE' ) ? FACEBOOK_REQUEST_THROTTLE : 60.0 );
 }
 
 // Max log entries to keep.
 if ( ! defined( 'NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT' ) ) {
-	define( 'NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100 );
+	define( 'NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', defined( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT' ) ? FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT : 100 );
 }
 
-// Backward-compat aliases — existing wp-config.php installs using the old names still work.
-// The user-defined value is read by nt_get_throttle_duration() from the DB option first,
-// so these constants are only the last-resort fallback.
+// Backward-compat aliases — ensure both names always exist for any code referencing the old names.
 if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE' ) ) {
 	define( 'FACEBOOK_REQUEST_THROTTLE', NT_FACEBOOK_REQUEST_THROTTLE );
 }
