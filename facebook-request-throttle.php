@@ -1,12 +1,15 @@
 <?php
 /**
  * Plugin Name: Facebook Request Throttle
+ * Plugin URI:  https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin
  * Description: Limits the request frequency from Facebook's web crawler and other configurable user agents.
  * Version:     3.0
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
  * License:     GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: facebook-request-throttle
+ * Domain Path: /languages
  *
  * @package FacebookRequestThrottle
  */

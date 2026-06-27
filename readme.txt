@@ -1,6 +1,6 @@
 === Facebook Request Throttle ===
 Contributors: nadimtuhin
-Tags: facebook, meta, crawler, throttle, rate-limit, performance, security
+Tags: facebook, meta, crawler, throttle, rate-limit
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
