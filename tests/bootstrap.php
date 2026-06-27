@@ -21,6 +21,12 @@ function set_transient(string $k, mixed $v, int $ttl): bool
     return true;
 }
 
+function delete_transient(string $k): bool
+{
+    unset($GLOBALS['_nt_transients'][$k]);
+    return true;
+}
+
 function get_option(string $k, mixed $default = []): mixed
 {
     return $GLOBALS['_nt_options'][$k] ?? $default;
@@ -87,5 +93,35 @@ function wp_die(string $msg, string $title, array $args): never
 
 // Load plugin (constants guard against double-define)
 define('ABSPATH', true);
+
+if (!defined('HOUR_IN_SECONDS')) {
+    define('HOUR_IN_SECONDS', 3600);
+}
+
+// HTTP stubs — tests override $GLOBALS['_nt_http_response'] to control the response.
+function wp_remote_get(string $url, array $args = []): array|WP_Error
+{
+    return $GLOBALS['_nt_http_response'] ?? new WP_Error('http_request_failed', 'No stub set');
+}
+function wp_remote_retrieve_response_code(array|WP_Error $r): int
+{
+    return is_array($r) ? ($r['response']['code'] ?? 0) : 0;
+}
+function wp_remote_retrieve_body(array|WP_Error $r): string
+{
+    return is_array($r) ? ($r['body'] ?? '') : '';
+}
+function is_wp_error(mixed $v): bool
+{
+    return $v instanceof WP_Error;
+}
+
+class WP_Error
+{
+    public function __construct(public string $code = '', public string $message = '') {}
+}
+
+function esc_url(string $url): string { return htmlspecialchars($url, ENT_QUOTES); }
+function wp_kses_post(string $s): string { return $s; }
 
 require_once __DIR__ . '/../facebook-request-throttle.php';

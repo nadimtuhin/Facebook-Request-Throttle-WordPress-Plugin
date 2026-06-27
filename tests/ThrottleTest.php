@@ -314,4 +314,101 @@ class ThrottleTest extends TestCase
         $log = get_option('nt_facebook_throttle_log', []);
         $this->assertCount(100, $log);
     }
+
+    // ── Update checker ────────────────────────────────────────────────────────
+
+    private function setHttpResponse(int $code, string $body): void
+    {
+        $GLOBALS['_nt_http_response'] = [
+            'response' => ['code' => $code],
+            'body'     => $body,
+        ];
+    }
+
+    /** @test */
+    public function test_update_checker_returns_latest_version_from_github(): void
+    {
+        delete_transient('nt_github_latest_version');
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.9.9']));
+
+        $result = nt_check_github_for_update();
+
+        $this->assertSame('9.9.9', $result);
+    }
+
+    /** @test */
+    public function test_update_checker_strips_leading_v(): void
+    {
+        delete_transient('nt_github_latest_version');
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v2.9']));
+
+        $this->assertSame('2.9', nt_check_github_for_update());
+    }
+
+    /** @test */
+    public function test_update_checker_returns_false_on_http_error(): void
+    {
+        delete_transient('nt_github_latest_version');
+        $GLOBALS['_nt_http_response'] = new WP_Error('http_request_failed', 'timeout');
+
+        $this->assertFalse(nt_check_github_for_update());
+    }
+
+    /** @test */
+    public function test_update_checker_returns_false_on_non_200(): void
+    {
+        delete_transient('nt_github_latest_version');
+        $this->setHttpResponse(403, '{"message":"rate limited"}');
+
+        $this->assertFalse(nt_check_github_for_update());
+    }
+
+    /** @test */
+    public function test_update_checker_returns_false_on_missing_tag(): void
+    {
+        delete_transient('nt_github_latest_version');
+        $this->setHttpResponse(200, json_encode(['foo' => 'bar']));
+
+        $this->assertFalse(nt_check_github_for_update());
+    }
+
+    /** @test */
+    public function test_update_checker_uses_cached_transient(): void
+    {
+        set_transient('nt_github_latest_version', '3.0.0', 3600);
+        // HTTP stub would return something different — transient wins.
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.0']));
+
+        $this->assertSame('3.0.0', nt_check_github_for_update());
+        delete_transient('nt_github_latest_version');
+    }
+
+    /** @test */
+    public function test_update_notice_not_shown_when_up_to_date(): void
+    {
+        delete_transient('nt_github_latest_version');
+        // Return same version as plugin — no update available.
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v' . NT_PLUGIN_VERSION]));
+
+        ob_start();
+        nt_maybe_show_update_notice();
+        $output = ob_get_clean();
+
+        $this->assertEmpty($output);
+    }
+
+    /** @test */
+    public function test_update_notice_shown_when_newer_version_exists(): void
+    {
+        delete_transient('nt_github_latest_version');
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.9.9']));
+
+        ob_start();
+        nt_maybe_show_update_notice();
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('9.9.9', $output);
+        $this->assertStringContainsString('notice-warning', $output);
+        $this->assertStringContainsString('releases/latest', $output);
+    }
 }
