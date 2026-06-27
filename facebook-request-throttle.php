@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Facebook Request Throttle
- * Description: Limits the request frequency from Facebook's web crawler.
- * Version:     2.4
+ * Description: Limits the request frequency from Facebook's web crawler and other configurable user agents.
+ * Version:     2.5
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
  * License:     MIT
@@ -12,23 +12,42 @@ if ( ! defined( 'ABSPATH' ) ) {
 	die( "We're sorry, but you can not directly access this file." );
 }
 
-// Number of seconds permitted between each hit from meta-externalagent / facebookexternalhit.
+// Number of seconds permitted between each hit.
 define( 'FACEBOOK_REQUEST_THROTTLE', 60.0 );
 
 // Max log entries to keep.
 define( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100 );
 
 /**
- * Check if the request is from Facebook's web crawler.
+ * User agents to throttle. Add additional substrings here.
+ *
+ * @var string[]
+ */
+$nt_user_agents_to_throttle = array(
+	'meta-externalagent',
+	'facebookexternalhit',
+);
+
+/**
+ * Check if the current request is from any of the configured user agents.
  *
  * @return bool
  */
 function nt_is_request_from_facebook() {
+	global $nt_user_agents_to_throttle;
+	if ( empty( $nt_user_agents_to_throttle ) ) {
+		$nt_user_agents_to_throttle = array( 'meta-externalagent', 'facebookexternalhit' );
+	}
 	$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? $_SERVER['HTTP_USER_AGENT'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-	return ! empty( $user_agent ) && (
-		false !== strpos( $user_agent, 'meta-externalagent' ) ||
-		false !== strpos( $user_agent, 'facebookexternalhit' )
-	);
+	if ( empty( $user_agent ) ) {
+		return false;
+	}
+	foreach ( $nt_user_agents_to_throttle as $agent ) {
+		if ( false !== strpos( $user_agent, $agent ) ) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
