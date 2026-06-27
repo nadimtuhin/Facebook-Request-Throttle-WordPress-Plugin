@@ -4,7 +4,7 @@ Tags: facebook, meta, crawler, throttle, rate-limit, performance, security
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.9
+Stable tag: 3.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 

@@ -4,7 +4,7 @@
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org/)
 [![Tests](https://img.shields.io/badge/tests-44%20passing-brightgreen)](./tests)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-2.9-orange)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.0-orange)](./CHANGELOG.md)
 
 > Rate-limit Facebook and Meta crawlers to protect your server from excessive scraping load.
 

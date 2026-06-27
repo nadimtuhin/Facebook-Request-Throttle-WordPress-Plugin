@@ -51,6 +51,7 @@ function current_time(string $format): string
 
 function current_user_can(string $cap): bool { return true; }
 function add_action(string $h, callable $cb): void {}
+function add_filter(string $h, callable $cb, int $priority = 10, int $args = 1): void {}
 function add_options_page(): void {}
 function wp_nonce_field(): void {}
 function check_admin_referer(string $action): bool { return true; }
@@ -123,5 +124,6 @@ class WP_Error
 
 function esc_url(string $url): string { return htmlspecialchars($url, ENT_QUOTES); }
 function wp_kses_post(string $s): string { return $s; }
+function plugin_basename(string $file): string { return basename(dirname($file)) . '/' . basename($file); }
 
 require_once __DIR__ . '/../facebook-request-throttle.php';

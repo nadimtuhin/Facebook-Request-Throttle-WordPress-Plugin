@@ -7,6 +7,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.0] — 2025-06-28
+
+### Added
+- **WP auto-update integration** — plugin now appears in WordPress's native update system
+  - Minor/patch releases (e.g. 3.0 → 3.1) auto-apply silently via WP's background updater
+  - Major releases (e.g. 3.x → 4.x) require a manual tap in Plugins dashboard; admin notice shown
+- `nt_get_github_release_data()` — fetches tag + zipball URL from GitHub, 12h transient cache
+- `nt_inject_plugin_update()` — hooks `pre_set_site_transient_update_plugins` to inject GitHub release
+- `nt_auto_update_policy()` — hooks `auto_update_plugin` to allow minors, block majors
+- `nt_is_major_upgrade()` — compares major version segments
+- 10 new PHPUnit tests (54 total)
+
+### Changed
+- Admin notice now only fires on **major** version bumps; minor updates are silent
+
+---
+
 ## [2.9] — 2025-06-28
 
 ### Added

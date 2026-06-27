@@ -411,4 +411,118 @@ class ThrottleTest extends TestCase
         $this->assertStringContainsString('notice-warning', $output);
         $this->assertStringContainsString('releases/latest', $output);
     }
+
+    // ── WP Update Integration ─────────────────────────────────────────────────
+
+    private function makeRelease(string $version): void
+    {
+        delete_transient('nt_github_release_data');
+        $GLOBALS['_nt_http_response'] = [
+            'response' => ['code' => 200],
+            'body'     => json_encode([
+                'tag_name'    => 'v' . $version,
+                'zipball_url' => 'https://api.github.com/repos/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/zipball/v' . $version,
+            ]),
+        ];
+    }
+
+    /** @test */
+    public function test_is_major_upgrade_detects_major_bump(): void
+    {
+        $this->assertTrue(nt_is_major_upgrade('2.9', '3.0'));
+        $this->assertTrue(nt_is_major_upgrade('2.9', '3.1'));
+        $this->assertFalse(nt_is_major_upgrade('2.9', '2.10'));
+        $this->assertFalse(nt_is_major_upgrade('2.9', '2.9.1'));
+    }
+
+    /** @test */
+    public function test_get_github_release_data_returns_version_and_zip(): void
+    {
+        $this->makeRelease('9.9.9');
+
+        $data = nt_get_github_release_data();
+
+        $this->assertIsArray($data);
+        $this->assertSame('9.9.9', $data['version']);
+        $this->assertStringContainsString('zipball', $data['zip_url']);
+    }
+
+    /** @test */
+    public function test_get_github_release_data_returns_false_on_error(): void
+    {
+        delete_transient('nt_github_release_data');
+        $GLOBALS['_nt_http_response'] = new WP_Error('timeout', 'timeout');
+
+        $this->assertFalse(nt_get_github_release_data());
+    }
+
+    /** @test */
+    public function test_inject_plugin_update_adds_response_when_newer(): void
+    {
+        $this->makeRelease('9.9.9');
+
+        $transient = (object) ['checked' => ['facebook-request-throttle/facebook-request-throttle.php' => NT_PLUGIN_VERSION]];
+        $result    = nt_inject_plugin_update($transient);
+
+        $this->assertNotEmpty((array) $result->response);
+        $values = array_values((array) $result->response)[0];
+        $this->assertSame('9.9.9', $values->new_version);
+    }
+
+    /** @test */
+    public function test_inject_plugin_update_skips_when_up_to_date(): void
+    {
+        $this->makeRelease(NT_PLUGIN_VERSION);
+
+        $transient = (object) ['checked' => ['facebook-request-throttle/facebook-request-throttle.php' => NT_PLUGIN_VERSION]];
+        $result    = nt_inject_plugin_update($transient);
+
+        $this->assertEmpty((array) ($result->response ?? []));
+    }
+
+    /** @test */
+    public function test_auto_update_policy_allows_minor(): void
+    {
+        $item = (object) ['slug' => 'facebook-request-throttle', 'new_version' => '2.99'];
+        $this->assertTrue(nt_auto_update_policy(null, $item));
+    }
+
+    /** @test */
+    public function test_auto_update_policy_blocks_major(): void
+    {
+        $item = (object) ['slug' => 'facebook-request-throttle', 'new_version' => '4.0'];
+        $this->assertFalse(nt_auto_update_policy(null, $item));
+    }
+
+    /** @test */
+    public function test_auto_update_policy_passes_through_other_plugins(): void
+    {
+        $item = (object) ['slug' => 'some-other-plugin', 'new_version' => '9.9'];
+        $this->assertNull(nt_auto_update_policy(null, $item));
+    }
+
+    /** @test */
+    public function test_major_update_notice_shown_on_major_bump(): void
+    {
+        $this->makeRelease('9.0.0');
+
+        ob_start();
+        nt_maybe_show_major_update_notice();
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('9.0.0', $output);
+        $this->assertStringContainsString('notice-warning', $output);
+    }
+
+    /** @test */
+    public function test_major_update_notice_hidden_on_minor_bump(): void
+    {
+        $this->makeRelease('2.99');
+
+        ob_start();
+        nt_maybe_show_major_update_notice();
+        $output = ob_get_clean();
+
+        $this->assertEmpty($output);
+    }
 }
