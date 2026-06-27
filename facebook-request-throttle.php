@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Facebook Request Throttle
  * Description: Limits the request frequency from Facebook's web crawler and other configurable user agents.
- * Version:     2.6
+ * Version:     2.9
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
  * License:     MIT
@@ -12,6 +12,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) {
 	die( "We're sorry, but you can not directly access this file." );
+}
+
+if ( ! defined( 'NT_PLUGIN_VERSION' ) ) {
+	define( 'NT_PLUGIN_VERSION', '2.9' );
 }
 
 // Fallback constant — define this in wp-config.php to override the dashboard setting.
@@ -439,3 +443,71 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 
 	WP_CLI::add_command( 'fb-throttle', 'NT_Facebook_Throttle_CLI' );
 }
+
+// ── GitHub Update Checker ──────────────────────────────────────────────────────
+
+/**
+ * Check GitHub releases for a newer version of this plugin.
+ *
+ * Caches the result for 12 hours via a WP transient to avoid hammering the API.
+ *
+ * @return string|false Latest version tag (e.g. "2.9") or false on failure.
+ */
+function nt_check_github_for_update() {
+	$cached = get_transient( 'nt_github_latest_version' );
+	if ( false !== $cached ) {
+		return $cached;
+	}
+
+	$response = wp_remote_get(
+		'https://api.github.com/repos/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/latest',
+		array(
+			'timeout'    => 5,
+			'user-agent' => 'Facebook-Request-Throttle-WP-Plugin/' . NT_PLUGIN_VERSION,
+		)
+	);
+
+	if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+		return false;
+	}
+
+	$body = json_decode( wp_remote_retrieve_body( $response ), true );
+	if ( empty( $body['tag_name'] ) ) {
+		return false;
+	}
+
+	// Strip leading "v" so "v2.9" → "2.9" for version_compare().
+	$latest = ltrim( $body['tag_name'], 'v' );
+	set_transient( 'nt_github_latest_version', $latest, 12 * HOUR_IN_SECONDS );
+	return $latest;
+}
+
+/**
+ * Show an admin notice when a newer GitHub release exists.
+ */
+function nt_maybe_show_update_notice() {
+	if ( ! current_user_can( 'update_plugins' ) ) {
+		return;
+	}
+
+	$latest = nt_check_github_for_update();
+	if ( false === $latest ) {
+		return;
+	}
+
+	if ( ! version_compare( $latest, NT_PLUGIN_VERSION, '>' ) ) {
+		return;
+	}
+
+	$url = 'https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/latest';
+	printf(
+		'<div class="notice notice-warning"><p><strong>%s</strong> %s <a href="%s" target="_blank" rel="noopener noreferrer">%s &rarr;</a></p></div>',
+		esc_html__( 'Facebook Request Throttle:', 'facebook-request-throttle' ),
+		/* translators: %s: new version number */
+		sprintf( esc_html__( 'Version %s is available on GitHub.', 'facebook-request-throttle' ), esc_html( $latest ) ),
+		esc_url( $url ),
+		esc_html__( 'Download update', 'facebook-request-throttle' )
+	);
+}
+add_action( 'admin_notices', 'nt_maybe_show_update_notice' );
+
