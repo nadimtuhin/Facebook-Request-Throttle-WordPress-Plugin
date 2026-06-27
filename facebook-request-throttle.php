@@ -18,14 +18,24 @@ if ( ! defined( 'NT_PLUGIN_VERSION' ) ) {
 	define( 'NT_PLUGIN_VERSION', '3.0' );
 }
 
-// Fallback constant — define this in wp-config.php to override the dashboard setting.
-if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE' ) ) {
-	define( 'FACEBOOK_REQUEST_THROTTLE', 60.0 );
+// Canonical prefixed constants.
+if ( ! defined( 'NT_FACEBOOK_REQUEST_THROTTLE' ) ) {
+	define( 'NT_FACEBOOK_REQUEST_THROTTLE', 60.0 );
 }
 
 // Max log entries to keep.
+if ( ! defined( 'NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT' ) ) {
+	define( 'NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100 );
+}
+
+// Backward-compat aliases — existing wp-config.php installs using the old names still work.
+// The user-defined value is read by nt_get_throttle_duration() from the DB option first,
+// so these constants are only the last-resort fallback.
+if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE' ) ) {
+	define( 'FACEBOOK_REQUEST_THROTTLE', NT_FACEBOOK_REQUEST_THROTTLE );
+}
 if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT' ) ) {
-	define( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100 );
+	define( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT );
 }
 
 /**
@@ -41,7 +51,7 @@ $nt_user_agents_to_throttle = array(
 /**
  * Get the configured throttle duration in seconds.
  *
- * Priority: dashboard setting → FACEBOOK_REQUEST_THROTTLE constant → 60.
+ * Priority: dashboard setting → NT_FACEBOOK_REQUEST_THROTTLE constant → 60.
  *
  * @return float
  */
@@ -50,7 +60,7 @@ function nt_get_throttle_duration() {
 	if ( null !== $saved ) {
 		return (float) $saved;
 	}
-	return (float) FACEBOOK_REQUEST_THROTTLE;
+	return (float) NT_FACEBOOK_REQUEST_THROTTLE;
 }
 
 /**
@@ -126,7 +136,7 @@ function nt_log( $status ) {
 			'status' => $status,
 		)
 	);
-	$log = array_slice( $log, 0, FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT );
+	$log = array_slice( $log, 0, NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT );
 	update_option( 'nt_facebook_throttle_log', $log, false );
 }
 
@@ -249,7 +259,7 @@ function nt_render_log_page() {
 							class="small-text"
 						>
 						<p class="description">
-							<?php esc_html_e( 'Minimum seconds between allowed hits from the same crawler. Default: 60. You can also define FACEBOOK_REQUEST_THROTTLE in wp-config.php — the dashboard value takes priority.', 'facebook-request-throttle' ); ?>
+							<?php esc_html_e( 'Minimum seconds between allowed hits from the same crawler. Default: 60. You can also define NT_FACEBOOK_REQUEST_THROTTLE (or the legacy FACEBOOK_REQUEST_THROTTLE) in wp-config.php — the dashboard value takes priority.', 'facebook-request-throttle' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -263,7 +273,7 @@ function nt_render_log_page() {
 			printf(
 				/* translators: %d: max number of log entries */
 				esc_html__( 'Shows the last %d requests from Facebook crawlers (facebookexternalhit / meta-externalagent).', 'facebook-request-throttle' ),
-				(int) FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT
+				(int) NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT
 			);
 			?>
 		</p>
