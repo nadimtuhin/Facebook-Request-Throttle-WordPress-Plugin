@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<ruleset name="Facebook Request Throttle">
+    <description>WordPress coding standards for a single-file plugin.</description>
+
+    <file>facebook-request-throttle.php</file>
+    <file>tests/</file>
+
+    <arg name="extensions" value="php"/>
+
+    <rule ref="WordPress"/>
+
+    <!--
+        Single-file plugin: functions and one WP-CLI class intentionally
+        co-located. These sniffs assume multi-file OOP projects.
+    -->
+    <rule ref="WordPress.Files.FileName">
+        <exclude-pattern>facebook-request-throttle.php</exclude-pattern>
+    </rule>
+    <rule ref="Universal.Files.SeparateFunctionsFromOO">
+        <exclude-pattern>facebook-request-throttle.php</exclude-pattern>
+    </rule>
+</ruleset>

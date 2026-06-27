@@ -59,6 +59,20 @@ function esc_html__(string $s): string { return $s; }
 function printf_esc(string $fmt, mixed ...$args): void { printf($fmt, ...$args); }
 function wp_parse_url(string $url, int $component = -1): mixed { return parse_url($url, $component); }
 
+// WP-CLI stubs — only defined when tests opt-in via $GLOBALS['_nt_test_wpcli']
+if ( ! class_exists( 'WP_CLI' ) ) {
+	class WP_CLI {
+		public static array $lines   = [];
+		public static array $success = [];
+		public static function line( string $msg ): void    { self::$lines[]   = $msg; }
+		public static function success( string $msg ): void { self::$success[] = $msg; }
+		public static function add_command(): void {}
+	}
+}
+if ( ! defined( 'WP_CLI' ) ) {
+	define( 'WP_CLI', true );
+}
+
 function status_header(int $code): void
 {
     $GLOBALS['_nt_die_status'] = $code;
