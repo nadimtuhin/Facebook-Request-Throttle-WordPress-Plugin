@@ -2,9 +2,9 @@
 
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white)](https://www.php.net/)
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org/)
-[![Tests](https://img.shields.io/badge/tests-29%20passing-brightgreen)](./tests)
+[![Tests](https://img.shields.io/badge/tests-44%20passing-brightgreen)](./tests)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-2.6-orange)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.9-orange)](./CHANGELOG.md)
 
 > Rate-limit Facebook and Meta crawlers to protect your server from excessive scraping load.
 
@@ -105,7 +105,7 @@ TESTBOT_URL=https://yoursite.com ./testbot
 
 ```bash
 composer install
-composer test        # PHPUnit — 29 tests
+composer test        # PHPUnit — 44 tests
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
@@ -113,6 +113,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 ---
 
 ## Changelog
+
+### 2.9
+- GitHub update checker: admin notice when a newer release exists on GitHub
+- `NT_PLUGIN_VERSION` constant for version comparisons
+- Tested up to WordPress 7.0
+- 44 PHPUnit tests
 
 ### 2.6
 - Dashboard setting for throttle duration (Settings → FB Throttle Log)

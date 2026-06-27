@@ -7,6 +7,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [2.9] — 2025-06-28
+
+### Added
+- GitHub update checker: `nt_check_github_for_update()` hits the GitHub releases API and caches the result for 12 hours via a WP transient
+- `nt_maybe_show_update_notice()` hooked to `admin_notices` — shows a warning banner (visible only to users with `update_plugins` capability) when a newer version is available on GitHub
+- `NT_PLUGIN_VERSION` constant for consistent version comparisons across the plugin
+- 8 new PHPUnit tests covering: version parse, `v`-prefix strip, HTTP error, 403, missing tag, transient cache hit, notice hidden when current, notice shown when outdated
+
+### Changed
+- Tested up to WordPress 7.0 (55% market share as of June 2025)
+- Stable tag bumped to 2.9
+
+### Upgrade Notice
+No breaking changes. Existing installations will automatically begin showing update notices when a new GitHub release is published.
+
+---
+
 ## [2.8] — 2024-06-28
 
 ### Added
