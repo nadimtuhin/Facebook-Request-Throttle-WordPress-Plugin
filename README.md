@@ -40,6 +40,30 @@ Or set the URL via environment variable:
 TESTBOT_URL=https://yoursite.com ./testbot
 ```
 
+## Configuration
+
+### Dashboard (recommended)
+
+Go to **Settings → FB Throttle Log** and set the throttle duration in seconds.
+The default is **60 seconds**. Changes take effect immediately — no code edits needed.
+
+### wp-config.php (advanced)
+
+Define the constant before the plugin loads for a code-level override:
+
+```php
+define( 'FACEBOOK_REQUEST_THROTTLE', 120 ); // 2 minutes
+```
+
+The dashboard value takes priority over the constant. If neither is set, the
+plugin defaults to 60 seconds.
+
+### Backward compatibility
+
+Existing installs that define `FACEBOOK_REQUEST_THROTTLE` in `wp-config.php`
+continue to work without changes. The dashboard field will show the constant
+value until you explicitly save a new value through the UI.
+
 ## Development
 
 ```bash

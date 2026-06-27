@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Facebook Request Throttle
  * Description: Limits the request frequency from Facebook's web crawler and other configurable user agents.
- * Version:     2.5
+ * Version:     2.6
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
  * License:     MIT
@@ -12,8 +12,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	die( "We're sorry, but you can not directly access this file." );
 }
 
-// Number of seconds permitted between each hit.
-define( 'FACEBOOK_REQUEST_THROTTLE', 60.0 );
+// Fallback constant — define this in wp-config.php to override the dashboard setting.
+if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE' ) ) {
+	define( 'FACEBOOK_REQUEST_THROTTLE', 60.0 );
+}
 
 // Max log entries to keep.
 define( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', 100 );
@@ -27,6 +29,21 @@ $nt_user_agents_to_throttle = array(
 	'meta-externalagent',
 	'facebookexternalhit',
 );
+
+/**
+ * Get the configured throttle duration in seconds.
+ *
+ * Priority: dashboard setting → FACEBOOK_REQUEST_THROTTLE constant → 60.
+ *
+ * @return float
+ */
+function nt_get_throttle_duration() {
+	$saved = get_option( 'nt_throttle_duration', null );
+	if ( null !== $saved ) {
+		return (float) $saved;
+	}
+	return (float) FACEBOOK_REQUEST_THROTTLE;
+}
 
 /**
  * Check if the current request is from any of the configured user agents.
@@ -56,13 +73,13 @@ function nt_is_request_from_facebook() {
  * @return bool
  */
 function nt_is_image_request() {
-	$request_path  = parse_url( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '', PHP_URL_PATH ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+	$request_path   = parse_url( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '', PHP_URL_PATH ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 	$file_extension = strtolower( pathinfo( $request_path, PATHINFO_EXTENSION ) );
 	return in_array( $file_extension, array( 'jpg', 'jpeg', 'png', 'gif', 'webp' ), true );
 }
 
 /**
- * Get the last access time of Facebook's web crawler.
+ * Get the last access time of the throttled crawler.
  *
  * @return mixed Transient value or false if not set.
  */
@@ -71,7 +88,7 @@ function nt_get_last_access_time() {
 }
 
 /**
- * Set the last access time of Facebook's web crawler.
+ * Set the last access time of the throttled crawler.
  *
  * @param float $current_time Unix timestamp with microseconds.
  * @return bool
@@ -80,7 +97,7 @@ function nt_set_last_access_time( $current_time ) {
 	return set_transient(
 		'nt_facebook_last_access_time',
 		$current_time,
-		FACEBOOK_REQUEST_THROTTLE + 1
+		nt_get_throttle_duration() + 1
 	);
 }
 
@@ -95,9 +112,9 @@ function nt_log( $status ) {
 		$log,
 		array(
 			'time'   => current_time( 'mysql' ),
-			'ip'     => isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '',           // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-			'ua'     => isset( $_SERVER['HTTP_USER_AGENT'] ) ? $_SERVER['HTTP_USER_AGENT'] : '',   // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-			'uri'    => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '',           // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			'ip'     => isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '',          // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			'ua'     => isset( $_SERVER['HTTP_USER_AGENT'] ) ? $_SERVER['HTTP_USER_AGENT'] : '',  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			'uri'    => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '',          // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 			'status' => $status,
 		)
 	);
@@ -106,7 +123,7 @@ function nt_log( $status ) {
 }
 
 /**
- * Throttle Facebook crawler requests to prevent overload.
+ * Throttle crawler requests to prevent overload.
  */
 function nt_facebook_request_throttle() {
 	if ( nt_is_image_request() ) {
@@ -115,8 +132,9 @@ function nt_facebook_request_throttle() {
 
 	$last_access_time = nt_get_last_access_time();
 	$current_time     = microtime( true );
+	$throttle         = nt_get_throttle_duration();
 
-	if ( $last_access_time && ( $current_time - $last_access_time < FACEBOOK_REQUEST_THROTTLE ) ) {
+	if ( $last_access_time && ( $current_time - $last_access_time < $throttle ) ) {
 		nt_log( 'throttled' );
 		nt_send_throttle_response();
 		// nt_send_throttle_response() calls wp_die() — execution stops here.
@@ -130,8 +148,9 @@ function nt_facebook_request_throttle() {
  * Send throttle response with appropriate headers.
  */
 function nt_send_throttle_response() {
+	$retry_after = (int) nt_get_throttle_duration();
 	status_header( 429 );
-	header( 'Retry-After: 60' );
+	header( 'Retry-After: ' . $retry_after );
 	wp_die(
 		'Too Many Requests',
 		'Too Many Requests',
@@ -139,7 +158,7 @@ function nt_send_throttle_response() {
 	);
 }
 
-// ── Admin log page ────────────────────────────────────────────────────────────
+// ── Admin settings + log page ─────────────────────────────────────────────────
 
 /**
  * Register the settings page under Settings menu.
@@ -156,6 +175,33 @@ function nt_admin_menu() {
 add_action( 'admin_menu', 'nt_admin_menu' );
 
 /**
+ * Register plugin settings.
+ */
+function nt_register_settings() {
+	register_setting(
+		'nt_throttle_settings',
+		'nt_throttle_duration',
+		array(
+			'type'              => 'number',
+			'default'           => 60,
+			'sanitize_callback' => 'nt_sanitize_throttle_duration',
+		)
+	);
+}
+add_action( 'admin_init', 'nt_register_settings' );
+
+/**
+ * Sanitize the throttle duration setting.
+ *
+ * @param mixed $value Raw input value.
+ * @return int Clamped integer between 1 and 86400.
+ */
+function nt_sanitize_throttle_duration( $value ) {
+	$value = (int) $value;
+	return max( 1, min( 86400, $value ) );
+}
+
+/**
  * Render the admin log page.
  */
 function nt_render_log_page() {
@@ -168,10 +214,42 @@ function nt_render_log_page() {
 		echo '<div class="updated"><p>Log cleared.</p></div>';
 	}
 
-	$log = get_option( 'nt_facebook_throttle_log', array() );
+	$log      = get_option( 'nt_facebook_throttle_log', array() );
+	$throttle = (int) nt_get_throttle_duration();
 	?>
 	<div class="wrap">
-		<h1><?php esc_html_e( 'Facebook Request Throttle — Hit Log', 'facebook-request-throttle' ); ?></h1>
+		<h1><?php esc_html_e( 'Facebook Request Throttle', 'facebook-request-throttle' ); ?></h1>
+
+		<h2><?php esc_html_e( 'Settings', 'facebook-request-throttle' ); ?></h2>
+		<form method="post" action="options.php">
+			<?php settings_fields( 'nt_throttle_settings' ); ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">
+						<label for="nt_throttle_duration">
+							<?php esc_html_e( 'Throttle duration (seconds)', 'facebook-request-throttle' ); ?>
+						</label>
+					</th>
+					<td>
+						<input
+							type="number"
+							id="nt_throttle_duration"
+							name="nt_throttle_duration"
+							value="<?php echo esc_attr( $throttle ); ?>"
+							min="1"
+							max="86400"
+							class="small-text"
+						>
+						<p class="description">
+							<?php esc_html_e( 'Minimum seconds between allowed hits from the same crawler. Default: 60. You can also define FACEBOOK_REQUEST_THROTTLE in wp-config.php — the dashboard value takes priority.', 'facebook-request-throttle' ); ?>
+						</p>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button(); ?>
+		</form>
+
+		<h2><?php esc_html_e( 'Hit Log', 'facebook-request-throttle' ); ?></h2>
 		<p>
 			<?php
 			printf(
