@@ -45,4 +45,10 @@ wp-config.php
 #
 # Note: If you wish to whitelist themes,
 # uncomment the next line
-#/wp-content/themesvendor/
+#/wp-content/themes
+
+# Dependencies
+vendor/
+
+# PHPUnit cache
+.phpunit.result.cache

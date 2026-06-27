@@ -23,25 +23,25 @@ class ThrottleTest extends TestCase
     public function test_facebookexternalhit_detected(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
-        $this->assertTrue(nt_isRequestFromFacebook());
+        $this->assertTrue(nt_is_request_from_facebook());
     }
 
     public function test_meta_externalagent_detected(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = 'meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)';
-        $this->assertTrue(nt_isRequestFromFacebook());
+        $this->assertTrue(nt_is_request_from_facebook());
     }
 
     public function test_googlebot_not_detected(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = 'Googlebot/2.1 (+http://www.google.com/bot.html)';
-        $this->assertFalse(nt_isRequestFromFacebook());
+        $this->assertFalse(nt_is_request_from_facebook());
     }
 
     public function test_empty_ua_not_detected(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = '';
-        $this->assertFalse(nt_isRequestFromFacebook());
+        $this->assertFalse(nt_is_request_from_facebook());
     }
 
     // ── Image detection ───────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ class ThrottleTest extends TestCase
     public function test_image_extensions_detected(string $uri): void
     {
         $_SERVER['REQUEST_URI'] = $uri;
-        $this->assertTrue(nt_isImageRequest());
+        $this->assertTrue(nt_is_image_request());
     }
 
     public static function imageExtensionProvider(): array
@@ -67,27 +67,27 @@ class ThrottleTest extends TestCase
     public function test_html_page_not_image(): void
     {
         $_SERVER['REQUEST_URI'] = '/about-us/';
-        $this->assertFalse(nt_isImageRequest());
+        $this->assertFalse(nt_is_image_request());
     }
 
     public function test_uri_with_query_string_image(): void
     {
         $_SERVER['REQUEST_URI'] = '/uploads/photo.jpg?w=300';
-        $this->assertTrue(nt_isImageRequest());
+        $this->assertTrue(nt_is_image_request());
     }
 
     // ── Throttle logic ────────────────────────────────────────────────────────
 
     public function test_first_hit_is_allowed(): void
     {
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $this->assertFalse($GLOBALS['_nt_die_called']);
     }
 
     public function test_first_hit_sets_transient(): void
     {
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $this->assertNotFalse(get_transient('nt_facebook_last_access_time'));
     }
@@ -99,7 +99,7 @@ class ThrottleTest extends TestCase
 
         $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 5;
 
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
     }
 
     public function test_throttled_response_sends_429_status(): void
@@ -107,7 +107,7 @@ class ThrottleTest extends TestCase
         $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 5;
 
         try {
-            nt_facebookRequestThrottle();
+            nt_facebook_request_throttle();
         } catch (\RuntimeException) {}
 
         $this->assertSame(429, $GLOBALS['_nt_die_status']);
@@ -117,7 +117,7 @@ class ThrottleTest extends TestCase
     {
         $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 61;
 
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $this->assertFalse($GLOBALS['_nt_die_called']);
     }
@@ -127,7 +127,7 @@ class ThrottleTest extends TestCase
         $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 1;
         $_SERVER['REQUEST_URI'] = '/wp-content/uploads/photo.jpg';
 
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $this->assertFalse($GLOBALS['_nt_die_called']);
     }
@@ -136,7 +136,7 @@ class ThrottleTest extends TestCase
 
     public function test_allowed_hit_creates_log_entry(): void
     {
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $log = get_option('nt_facebook_throttle_log', []);
         $this->assertCount(1, $log);
@@ -147,7 +147,7 @@ class ThrottleTest extends TestCase
     {
         $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 5;
 
-        try { nt_facebookRequestThrottle(); } catch (\RuntimeException) {}
+        try { nt_facebook_request_throttle(); } catch (\RuntimeException) {}
 
         $log = get_option('nt_facebook_throttle_log', []);
         $this->assertCount(1, $log);
@@ -156,7 +156,7 @@ class ThrottleTest extends TestCase
 
     public function test_log_entry_contains_expected_fields(): void
     {
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $entry = get_option('nt_facebook_throttle_log', [])[0];
         $this->assertArrayHasKey('time',   $entry);
@@ -169,11 +169,11 @@ class ThrottleTest extends TestCase
     public function test_log_is_newest_first(): void
     {
         // First hit
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
         // Second hit — after window
         $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 61;
         $_SERVER['REQUEST_URI'] = '/second/';
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $log = get_option('nt_facebook_throttle_log', []);
         $this->assertSame('/second/', $log[0]['uri']);
@@ -187,7 +187,7 @@ class ThrottleTest extends TestCase
             ['time' => '', 'ip' => '', 'ua' => '', 'uri' => '', 'status' => 'allowed']
         );
 
-        nt_facebookRequestThrottle();
+        nt_facebook_request_throttle();
 
         $log = get_option('nt_facebook_throttle_log', []);
         $this->assertCount(100, $log);
