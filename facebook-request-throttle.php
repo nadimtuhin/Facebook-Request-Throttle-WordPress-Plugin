@@ -309,3 +309,133 @@ function nt_render_log_page() {
 if ( nt_is_request_from_facebook() ) {
 	nt_facebook_request_throttle();
 }
+
+// ── WP-CLI ────────────────────────────────────────────────────────────────────
+
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	/**
+	 * WP-CLI commands for Facebook Request Throttle.
+	 *
+	 * Single-file plugin — class intentionally co-located with functions.
+	 *
+	 * @package FacebookRequestThrottle
+	 */
+	// phpcs:disable WordPress.Files.FileName.InvalidClassFileName -- single-file plugin
+
+	/**
+	 * WP-CLI command handler.
+	 *
+	 * @package FacebookRequestThrottle
+	 */
+	class NT_Facebook_Throttle_CLI {
+
+		/**
+		 * Show current configuration and log summary.
+		 *
+		 * ## EXAMPLES
+		 *
+		 *   wp fb-throttle status
+		 *
+		 * @when after_wp_load
+		 */
+		public function status() {
+			$duration  = (int) nt_get_throttle_duration();
+			$log       = get_option( 'nt_facebook_throttle_log', array() );
+			$total     = count( $log );
+			$throttled = count( array_filter( $log, fn( $e ) => 'throttled' === $e['status'] ) );
+			$allowed   = $total - $throttled;
+			$last      = $total > 0 ? $log[0]['time'] : 'none';
+
+			WP_CLI::line( 'Throttle duration : ' . $duration . 's' );
+			WP_CLI::line( 'Log entries       : ' . $total . ' (allowed: ' . $allowed . ', throttled: ' . $throttled . ')' );
+			WP_CLI::line( 'Last hit          : ' . $last );
+		}
+
+		/**
+		 * Display the hit log.
+		 *
+		 * ## OPTIONS
+		 *
+		 * [--limit=<n>]
+		 * : Number of entries to show. Default: 20.
+		 *
+		 * [--status=<status>]
+		 * : Filter by status: allowed or throttled.
+		 *
+		 * [--format=<format>]
+		 * : Output format: table, csv, json, yaml. Default: table.
+		 *
+		 * ## EXAMPLES
+		 *
+		 *   wp fb-throttle log
+		 *   wp fb-throttle log --limit=50 --status=throttled --format=json
+		 *
+		 * @when after_wp_load
+		 * @param array $args       Positional args.
+		 * @param array $assoc_args Named args.
+		 */
+		public function log( $args, $assoc_args ) {
+			$limit  = (int) ( $assoc_args['limit'] ?? 20 );
+			$status = $assoc_args['status'] ?? '';
+			$format = $assoc_args['format'] ?? 'table';
+
+			$log = get_option( 'nt_facebook_throttle_log', array() );
+
+			if ( $status ) {
+				$log = array_values( array_filter( $log, fn( $e ) => $e['status'] === $status ) );
+			}
+
+			$log = array_slice( $log, 0, $limit );
+
+			if ( empty( $log ) ) {
+				WP_CLI::line( 'No log entries found.' );
+				return;
+			}
+
+			WP_CLI\Utils\format_items( $format, $log, array( 'time', 'status', 'ip', 'uri', 'ua' ) );
+		}
+
+		/**
+		 * Clear the hit log.
+		 *
+		 * ## EXAMPLES
+		 *
+		 *   wp fb-throttle clear
+		 *
+		 * @when after_wp_load
+		 */
+		public function clear() {
+			delete_option( 'nt_facebook_throttle_log' );
+			WP_CLI::success( 'Log cleared.' );
+		}
+
+		/**
+		 * Get or set the throttle duration.
+		 *
+		 * ## OPTIONS
+		 *
+		 * [<seconds>]
+		 * : New throttle duration in seconds (1–86400). Omit to read current value.
+		 *
+		 * ## EXAMPLES
+		 *
+		 *   wp fb-throttle duration
+		 *   wp fb-throttle duration 120
+		 *
+		 * @when after_wp_load
+		 * @param array $args Positional args.
+		 */
+		public function duration( $args ) {
+			if ( empty( $args ) ) {
+				WP_CLI::line( (int) nt_get_throttle_duration() . 's' );
+				return;
+			}
+
+			$value = nt_sanitize_throttle_duration( $args[0] );
+			update_option( 'nt_throttle_duration', $value );
+			WP_CLI::success( 'Throttle duration set to ' . $value . 's.' );
+		}
+	}
+
+	WP_CLI::add_command( 'fb-throttle', 'NT_Facebook_Throttle_CLI' );
+}

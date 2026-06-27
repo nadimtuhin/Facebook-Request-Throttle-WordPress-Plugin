@@ -185,6 +185,75 @@ class ThrottleTest extends TestCase
         $this->assertFalse($GLOBALS['_nt_die_called']);
     }
 
+    // ── WP-CLI commands ───────────────────────────────────────────────────────
+
+    private function fresh_cli(): NT_Facebook_Throttle_CLI
+    {
+        WP_CLI::$lines   = [];
+        WP_CLI::$success = [];
+        return new NT_Facebook_Throttle_CLI();
+    }
+
+    public function test_cli_status_shows_duration(): void
+    {
+        update_option('nt_throttle_duration', 90);
+        $cli = $this->fresh_cli();
+        $cli->status();
+        $this->assertStringContainsString('90s', WP_CLI::$lines[0]);
+    }
+
+    public function test_cli_status_shows_log_counts(): void
+    {
+        update_option('nt_facebook_throttle_log', [
+            ['time' => 't1', 'status' => 'allowed',   'ip' => '', 'uri' => '', 'ua' => ''],
+            ['time' => 't2', 'status' => 'throttled',  'ip' => '', 'uri' => '', 'ua' => ''],
+        ]);
+        $cli = $this->fresh_cli();
+        $cli->status();
+        $this->assertStringContainsString('allowed: 1', WP_CLI::$lines[1]);
+        $this->assertStringContainsString('throttled: 1', WP_CLI::$lines[1]);
+    }
+
+    public function test_cli_clear_removes_log(): void
+    {
+        update_option('nt_facebook_throttle_log', [['time' => 't', 'status' => 'allowed', 'ip' => '', 'uri' => '', 'ua' => '']]);
+        $cli = $this->fresh_cli();
+        $cli->clear();
+        $this->assertEmpty(get_option('nt_facebook_throttle_log', []));
+        $this->assertStringContainsString('cleared', WP_CLI::$success[0]);
+    }
+
+    public function test_cli_duration_reads_current(): void
+    {
+        update_option('nt_throttle_duration', 45);
+        $cli = $this->fresh_cli();
+        $cli->duration([]);
+        $this->assertStringContainsString('45s', WP_CLI::$lines[0]);
+    }
+
+    public function test_cli_duration_sets_value(): void
+    {
+        $cli = $this->fresh_cli();
+        $cli->duration([120]);
+        $this->assertSame(120, (int) get_option('nt_throttle_duration'));
+        $this->assertStringContainsString('120s', WP_CLI::$success[0]);
+    }
+
+    public function test_cli_duration_clamps_to_max(): void
+    {
+        $cli = $this->fresh_cli();
+        $cli->duration([999999]);
+        $this->assertSame(86400, (int) get_option('nt_throttle_duration'));
+    }
+
+    public function test_cli_log_empty_message(): void
+    {
+        update_option('nt_facebook_throttle_log', []);
+        $cli = $this->fresh_cli();
+        $cli->log([], []);
+        $this->assertStringContainsString('No log entries', WP_CLI::$lines[0]);
+    }
+
     // ── Logging ───────────────────────────────────────────────────────────────
 
     public function test_allowed_hit_creates_log_entry(): void
