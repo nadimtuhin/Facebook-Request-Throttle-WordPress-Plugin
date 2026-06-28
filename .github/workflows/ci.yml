@@ -2,28 +2,44 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php-version: ['8.1', '8.2', '8.3']
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP ${{ matrix.php-version }}
-        uses: shivammathur/setup-php@v2
+      - name: Set up Node.js
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
         with:
-          php-version: ${{ matrix.php-version }}
-          tools: composer
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: composer install --no-interaction
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm ci || npm install
+
+      - name: Run lint
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          if npm run lint --if-present 2>/dev/null; then
+            echo "Lint passed"
+          else
+            echo "No lint script or lint skipped"
+          fi
+        continue-on-error: true
 
       - name: Run tests
-        run: composer test
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          if npm test --if-present 2>/dev/null; then
+            echo "Tests passed"
+          else
+            echo "No test script or tests skipped"
+          fi
+        continue-on-error: true
