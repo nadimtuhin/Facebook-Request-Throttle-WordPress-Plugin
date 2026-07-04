@@ -1,5 +1,5 @@
 # URL of your WordPress site
-URL="http://wordpress.local/"
+URL="http://wordpress.local/test"
 
 # User agent strings for Facebook's web crawlers
 USER_AGENT_FACEBOOK="facebookexternalhit"
