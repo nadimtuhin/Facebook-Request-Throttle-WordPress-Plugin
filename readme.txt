@@ -2,9 +2,9 @@
 Contributors: nadimtuhin
 Tags: facebook, meta, crawler, throttle, rate-limit
 Requires at least: 5.0
-Tested up to: 7.0
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.0
+Stable tag: 3.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,20 @@ The dashboard value takes priority. If neither is set, the plugin defaults to 60
 
 Existing installs using `FACEBOOK_REQUEST_THROTTLE` in `wp-config.php` continue to work with zero changes.
 
+== Limitations ==
+
+* **User-agent throttling is spoofable.** Each configured crawler UA gets its own throttle
+  bucket, but anyone sending a fake `facebookexternalhit` user agent shares the real crawler's
+  bucket and can force it into 429s. This is inherent to UA-based throttling — Facebook fans out
+  across many IPs, so per-IP buckets would defeat the plugin's purpose. If starvation matters to
+  you, rate-limit abusive IPs at the server/firewall level.
+* **Without a persistent object cache** (Redis/Memcached), the throttle check is a
+  read-then-write on a database transient — under truly concurrent hits, one extra request per
+  window can slip through. With a persistent object cache the plugin uses an atomic
+  add-if-absent, closing that gap.
+* **Multi-server setups** need a shared object cache; otherwise each web node keeps its own
+  throttle clock.
+
 == Frequently Asked Questions ==
 
 = Will this affect normal visitors? =
@@ -87,6 +101,9 @@ Yes. Deleting the plugin via the Plugins dashboard removes all stored options an
 
 == Changelog ==
 
+= 3.1 =
+* Hit log now records throttled requests only; allowed hits are tracked via a lightweight counter shown as "Allowed hits" on the admin page (`wp fb-throttle log --status=allowed` now returns no rows) — removes a full-array database write on every allowed crawler hit
+
 = 3.0 =
 * WordPress native auto-update integration: minor releases auto-apply silently, major releases require manual approval
 * Admin notice for major updates with link to release notes
@@ -106,7 +123,7 @@ Yes. Deleting the plugin via the Plugins dashboard removes all stored options an
 = 2.7 =
 * PHPCS clean under WordPress coding standard
 * `index.php` silence file added
-* PHP 7.4 minimum declared; tested up to WordPress 7.0
+* PHP 7.4 minimum declared; tested up to WordPress 6.9
 
 = 2.6 =
 * Dashboard setting for throttle duration (Settings → FB Throttle Log)

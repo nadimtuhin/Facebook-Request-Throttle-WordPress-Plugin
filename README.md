@@ -2,8 +2,8 @@
 
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white)](https://www.php.net/)
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org/)
-[![Tests](https://img.shields.io/badge/tests-44%20passing-brightgreen)](./tests)
-[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![CI](https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-GPL--2.0-blue)](./LICENSE)
 [![Version](https://img.shields.io/badge/version-3.0-orange)](./CHANGELOG.md)
 
 > Rate-limit Facebook and Meta crawlers to protect your server from excessive scraping load.
@@ -16,11 +16,11 @@ Facebook's web crawlers (`facebookexternalhit` and `meta-externalagent`) can ham
 
 | Requirement | Minimum | Recommended |
 |---|---|---|
-| PHP | 7.4 | 8.2 or 8.3 |
-| WordPress | 5.0 | 7.0 (latest) |
+| PHP | 7.4 (runtime) | 8.2 or 8.3 |
+| WordPress | 5.0 | 6.9 (latest) |
 | MySQL / MariaDB | 5.5.5 / 10.0 | 8.0 / 10.6 |
 
-Tested on PHP 7.4, 8.0, 8.1, 8.2, 8.3 and WordPress 5.0 – 7.0.
+CI runs the test suite on PHP 8.1, 8.2 and 8.3 (PHPUnit 10 requires PHP 8.1+; the plugin itself runs on PHP 7.4+).
 
 ---
 
@@ -117,7 +117,7 @@ TESTBOT_URL=https://yoursite.com ./testbot
 
 ```bash
 composer install
-composer test        # PHPUnit — 44 tests
+composer test        # PHPUnit (requires PHP 8.1+)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
@@ -129,7 +129,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 ### 2.9
 - GitHub update checker: admin notice when a newer release exists on GitHub
 - `NT_PLUGIN_VERSION` constant for version comparisons
-- Tested up to WordPress 7.0
+- Tested up to WordPress 6.9
 - 44 PHPUnit tests
 
 ### 2.6
@@ -150,4 +150,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-2.0-or-later — see [LICENSE](LICENSE).
