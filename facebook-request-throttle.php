@@ -3,7 +3,7 @@
  * Plugin Name: Facebook Request Throttle
  * Plugin URI:  https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin
  * Description: Limits the request frequency from Facebook's web crawler and other configurable user agents.
- * Version:     3.0
+ * Version:     3.1
  * Author:      Nadim Tuhin
  * Author URI:  https://nadimtuhin.com
  * License:     GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'NT_PLUGIN_VERSION' ) ) {
-	define( 'NT_PLUGIN_VERSION', '3.0' );
+	define( 'NT_PLUGIN_VERSION', '3.1' );
 }
 
 // Canonical prefixed constants.
@@ -69,7 +69,7 @@ function nt_get_throttle_duration() {
 /**
  * Check if the current request is from any of the configured user agents.
  *
- * @return bool
+ * @return string|false The matched agent substring (a truthy string), or false.
  */
 function nt_is_request_from_facebook() {
 	global $nt_user_agents_to_throttle;
@@ -81,8 +81,8 @@ function nt_is_request_from_facebook() {
 		return false;
 	}
 	foreach ( $nt_user_agents_to_throttle as $agent ) {
-		if ( false !== strpos( $user_agent, $agent ) ) {
-			return true;
+		if ( false !== stripos( $user_agent, $agent ) ) {
+			return $agent;
 		}
 	}
 	return false;
@@ -100,34 +100,88 @@ function nt_is_image_request() {
 }
 
 /**
- * Get the last access time of the throttled crawler.
+ * Build the per-agent transient/cache key.
  *
- * @return mixed Transient value or false if not set.
+ * Sanitized to [a-z0-9]: custom UA substrings can contain spaces or parens,
+ * which are invalid in memcached keys.
+ *
+ * @param string $agent Matched UA substring.
+ * @return string
  */
-function nt_get_last_access_time() {
-	return get_transient( 'nt_facebook_last_access_time' );
+function nt_throttle_transient_key( $agent ) {
+	return 'nt_fb_last_access_' . strtolower( preg_replace( '/[^a-z0-9]/i', '', (string) $agent ) );
 }
 
 /**
- * Set the last access time of the throttled crawler.
+ * Get the last access time for one throttled crawler bucket.
  *
- * @param float $current_time Unix timestamp with microseconds.
+ * @param string $agent Matched UA substring.
+ * @return mixed Transient value or false if not set.
+ */
+function nt_get_last_access_time( $agent ) {
+	return get_transient( nt_throttle_transient_key( $agent ) );
+}
+
+/**
+ * Set the last access time for one throttled crawler bucket.
+ *
+ * @param float  $current_time Unix timestamp with microseconds.
+ * @param string $agent        Matched UA substring.
  * @return bool
  */
-function nt_set_last_access_time( $current_time ) {
+function nt_set_last_access_time( $current_time, $agent ) {
 	return set_transient(
-		'nt_facebook_last_access_time',
+		nt_throttle_transient_key( $agent ),
 		$current_time,
 		nt_get_throttle_duration() + 1
 	);
 }
 
 /**
- * Append an entry to the admin-visible hit log (capped at LOG_LIMIT entries).
+ * Claim the throttle slot for an agent bucket. True = request may proceed.
+ *
+ * @param string $agent        Matched UA substring.
+ * @param float  $current_time Unix timestamp with microseconds.
+ * @return bool
+ */
+function nt_acquire_throttle_slot( $agent, $current_time ) {
+	$throttle = nt_get_throttle_duration();
+
+	if ( function_exists( 'wp_using_ext_object_cache' ) && wp_using_ext_object_cache() ) {
+		// ponytail: atomicity relies on the drop-in implementing wp_cache_add as true
+		// add-if-absent (Redis NX / memcached add); window = ceil(duration) via key TTL
+		// here vs float timestamp math on the DB path below.
+		return wp_cache_add( nt_throttle_transient_key( $agent ), $current_time, 'transient', (int) ceil( $throttle ) );
+	}
+
+	// ponytail: DB transients are read-then-write — a narrow race can double-allow one
+	// request per window under true concurrency. Upgrade path = persistent object cache.
+	$last_access_time = nt_get_last_access_time( $agent );
+	if ( $last_access_time && ( $current_time - $last_access_time < $throttle ) ) {
+		return false;
+	}
+	nt_set_last_access_time( $current_time, $agent );
+	return true;
+}
+
+/**
+ * Record a crawler hit.
+ *
+ * Throttled hits append a full entry to the admin-visible log (capped at LOG_LIMIT
+ * entries) — they're the signal an admin needs to see. Allowed hits are the volume;
+ * logging every one meant a full-array update_option() per hit, so instead they just
+ * bump a single counter option (autoload off). This trades away per-allowed-hit
+ * ip/uri/ua detail for a much cheaper write.
  *
  * @param string $status 'allowed' or 'throttled'.
  */
 function nt_log( $status ) {
+	if ( 'allowed' === $status ) {
+		$count = (int) get_option( 'nt_facebook_throttle_allowed_count', 0 );
+		update_option( 'nt_facebook_throttle_allowed_count', $count + 1, false );
+		return;
+	}
+
 	$log = get_option( 'nt_facebook_throttle_log', array() );
 	array_unshift(
 		$log,
@@ -145,23 +199,27 @@ function nt_log( $status ) {
 
 /**
  * Throttle crawler requests to prevent overload.
+ *
+ * @param string|null $agent Matched UA substring; null re-detects from the request.
  */
-function nt_facebook_request_throttle() {
+function nt_facebook_request_throttle( $agent = null ) {
 	if ( nt_is_image_request() ) {
 		return;
 	}
 
-	$last_access_time = nt_get_last_access_time();
-	$current_time     = microtime( true );
-	$throttle         = nt_get_throttle_duration();
+	if ( null === $agent ) {
+		$agent = nt_is_request_from_facebook();
+	}
+	if ( false === $agent ) {
+		return;
+	}
 
-	if ( $last_access_time && ( $current_time - $last_access_time < $throttle ) ) {
+	if ( ! nt_acquire_throttle_slot( $agent, microtime( true ) ) ) {
 		nt_log( 'throttled' );
 		nt_send_throttle_response();
 		// nt_send_throttle_response() calls wp_die() — execution stops here.
 	}
 
-	nt_set_last_access_time( $current_time );
 	nt_log( 'allowed' );
 }
 
@@ -232,10 +290,12 @@ function nt_render_log_page() {
 
 	if ( isset( $_POST['nt_clear_log'] ) && check_admin_referer( 'nt_clear_log' ) ) {
 		delete_option( 'nt_facebook_throttle_log' );
+		delete_option( 'nt_facebook_throttle_allowed_count' );
 		echo '<div class="updated"><p>Log cleared.</p></div>';
 	}
 
 	$log      = get_option( 'nt_facebook_throttle_log', array() );
+	$allowed  = (int) get_option( 'nt_facebook_throttle_allowed_count', 0 );
 	$throttle = (int) nt_get_throttle_duration();
 	?>
 	<div class="wrap">
@@ -274,8 +334,17 @@ function nt_render_log_page() {
 		<p>
 			<?php
 			printf(
+				/* translators: %d: allowed hit count */
+				esc_html__( 'Allowed hits: %d', 'facebook-request-throttle' ),
+				(int) $allowed
+			);
+			?>
+		</p>
+		<p>
+			<?php
+			printf(
 				/* translators: %d: max number of log entries */
-				esc_html__( 'Shows the last %d requests from Facebook crawlers (facebookexternalhit / meta-externalagent).', 'facebook-request-throttle' ),
+				esc_html__( 'Shows the last %d throttled (429) requests from Facebook crawlers (facebookexternalhit / meta-externalagent). Allowed hits are counted above but no longer logged individually.', 'facebook-request-throttle' ),
 				(int) NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT
 			);
 			?>
@@ -323,8 +392,9 @@ function nt_render_log_page() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-if ( nt_is_request_from_facebook() ) {
-	nt_facebook_request_throttle();
+$nt_matched_agent = nt_is_request_from_facebook();
+if ( false !== $nt_matched_agent ) {
+	nt_facebook_request_throttle( $nt_matched_agent );
 }
 
 // ── WP-CLI ────────────────────────────────────────────────────────────────────
@@ -358,14 +428,13 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		public function status() {
 			$duration  = (int) nt_get_throttle_duration();
 			$log       = get_option( 'nt_facebook_throttle_log', array() );
-			$total     = count( $log );
-			$throttled = count( array_filter( $log, fn( $e ) => 'throttled' === $e['status'] ) );
-			$allowed   = $total - $throttled;
-			$last      = $total > 0 ? $log[0]['time'] : 'none';
+			$throttled = count( $log );
+			$allowed   = (int) get_option( 'nt_facebook_throttle_allowed_count', 0 );
+			$last      = $throttled > 0 ? $log[0]['time'] : 'none';
 
 			WP_CLI::line( 'Throttle duration : ' . $duration . 's' );
-			WP_CLI::line( 'Log entries       : ' . $total . ' (allowed: ' . $allowed . ', throttled: ' . $throttled . ')' );
-			WP_CLI::line( 'Last hit          : ' . $last );
+			WP_CLI::line( 'Log entries       : ' . ( $allowed + $throttled ) . ' (allowed: ' . $allowed . ', throttled: ' . $throttled . ')' );
+			WP_CLI::line( 'Last throttled hit: ' . $last );
 		}
 
 		/**
@@ -423,6 +492,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		 */
 		public function clear() {
 			delete_option( 'nt_facebook_throttle_log' );
+			delete_option( 'nt_facebook_throttle_allowed_count' );
 			WP_CLI::success( 'Log cleared.' );
 		}
 
@@ -462,37 +532,15 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 /**
  * Check GitHub releases for a newer version of this plugin.
  *
- * Caches the result for 12 hours via a WP transient to avoid hammering the API.
+ * Thin wrapper over nt_get_github_release_data() — both the version-only check and the
+ * full release data (version + zip URL) now share a single fetch and transient, so they
+ * can no longer disagree about what the latest release is.
  *
  * @return string|false Latest version tag (e.g. "2.9") or false on failure.
  */
 function nt_check_github_for_update() {
-	$cached = get_transient( 'nt_github_latest_version' );
-	if ( false !== $cached ) {
-		return $cached;
-	}
-
-	$response = wp_remote_get(
-		'https://api.github.com/repos/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/latest',
-		array(
-			'timeout'    => 5,
-			'user-agent' => 'Facebook-Request-Throttle-WP-Plugin/' . NT_PLUGIN_VERSION,
-		)
-	);
-
-	if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-		return false;
-	}
-
-	$body = json_decode( wp_remote_retrieve_body( $response ), true );
-	if ( empty( $body['tag_name'] ) ) {
-		return false;
-	}
-
-	// Strip leading "v" so "v2.9" → "2.9" for version_compare().
-	$latest = ltrim( $body['tag_name'], 'v' );
-	set_transient( 'nt_github_latest_version', $latest, 12 * HOUR_IN_SECONDS );
-	return $latest;
+	$release = nt_get_github_release_data();
+	return false === $release ? false : $release['version'];
 }
 
 /**
@@ -512,6 +560,11 @@ function nt_maybe_show_update_notice() {
 		return;
 	}
 
+	// Major bumps are announced by nt_maybe_show_major_update_notice() — stand down to avoid a double banner.
+	if ( nt_is_major_upgrade( NT_PLUGIN_VERSION, $latest ) ) {
+		return;
+	}
+
 	$url = 'https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/latest';
 	printf(
 		'<div class="notice notice-warning"><p><strong>%s</strong> %s <a href="%s" target="_blank" rel="noopener noreferrer">%s &rarr;</a></p></div>',
@@ -528,8 +581,12 @@ add_action( 'admin_notices', 'nt_maybe_show_major_update_notice' );
 // ── WP Update Integration ──────────────────────────────────────────────────────
 
 /**
- * Fetch full release data from GitHub (tag_name + zipball_url).
- * Extends nt_check_github_for_update() by also caching the zip URL.
+ * Fetch release data from GitHub (tag_name; zipball_url when available).
+ *
+ * Single unauthenticated call to the GitHub API, cached 12 hours via one transient.
+ * `zip_url` is optional — a release payload with only `tag_name` still resolves a
+ * version so notices/version checks keep working; callers that need the zip (the WP
+ * update injector) must check `zip_url` themselves before using it as a package.
  *
  * @return array{version: string, zip_url: string}|false
  */
@@ -552,18 +609,58 @@ function nt_get_github_release_data() {
 	}
 
 	$body = json_decode( wp_remote_retrieve_body( $response ), true );
-	if ( empty( $body['tag_name'] ) || empty( $body['zipball_url'] ) ) {
+	if ( empty( $body['tag_name'] ) ) {
 		return false;
 	}
 
 	$data = array(
 		'version' => ltrim( $body['tag_name'], 'v' ),
-		'zip_url' => $body['zipball_url'],
+		'zip_url' => $body['zipball_url'] ?? '',
 	);
 
 	set_transient( 'nt_github_release_data', $data, 12 * HOUR_IN_SECONDS );
 	return $data;
 }
+
+/**
+ * Rename the extracted GitHub-zip source folder to the currently installed plugin's
+ * folder name before WP installs it.
+ *
+ * GitHub zipballs extract to `<owner>-<repo>-<sha>/`, not the installed plugin slug —
+ * without this, WP would treat the update as a NEW plugin and deactivate the old one.
+ * The target folder name is read from the CURRENT install (not hardcoded) so this also
+ * works correctly on non-canonically-named installs.
+ *
+ * @param string|WP_Error $source        Path to the upgrade package source.
+ * @param string          $remote_source Path to the upgrade package remote source.
+ * @param WP_Upgrader     $upgrader      Upgrader instance.
+ * @param array           $hook_extra    Extra arguments passed to hooked filters.
+ * @return string|WP_Error
+ */
+function nt_maybe_rename_update_source( $source, $remote_source, $upgrader, $hook_extra ) {
+	if ( is_wp_error( $source ) ) {
+		return $source;
+	}
+
+	if ( ! isset( $hook_extra['plugin'] ) || plugin_basename( __FILE__ ) !== $hook_extra['plugin'] ) {
+		return $source;
+	}
+
+	$install_dirname = dirname( plugin_basename( __FILE__ ) );
+	$new_source      = trailingslashit( dirname( $source ) ) . $install_dirname;
+
+	if ( trailingslashit( $source ) === trailingslashit( $new_source ) ) {
+		return $source;
+	}
+
+	global $wp_filesystem;
+	if ( ! $wp_filesystem->move( $source, $new_source, true ) ) {
+		return new WP_Error( 'nt_rename_failed', esc_html__( 'Facebook Request Throttle: could not rename the update package to the installed plugin folder.', 'facebook-request-throttle' ) );
+	}
+
+	return trailingslashit( $new_source );
+}
+add_filter( 'upgrader_source_selection', 'nt_maybe_rename_update_source', 10, 4 );
 
 /**
  * Determine if a version bump is a major upgrade (different major version).
@@ -590,7 +687,7 @@ function nt_inject_plugin_update( $transient ) {
 	}
 
 	$release = nt_get_github_release_data();
-	if ( false === $release ) {
+	if ( false === $release || empty( $release['zip_url'] ) ) {
 		return $transient;
 	}
 

@@ -8,14 +8,20 @@ class ThrottleTest extends TestCase
 {
     protected function setUp(): void
     {
-        $GLOBALS['_nt_transients'] = [];
-        $GLOBALS['_nt_options']    = [];
-        $GLOBALS['_nt_die_called'] = false;
-        $GLOBALS['_nt_die_status'] = null;
+        $GLOBALS['_nt_transients']       = [];
+        $GLOBALS['_nt_transient_expiry'] = [];
+        $GLOBALS['_nt_options']          = [];
+        $GLOBALS['_nt_cache']            = [];
+        $GLOBALS['_nt_ext_cache']        = false;
+        $GLOBALS['_nt_die_called']       = false;
+        $GLOBALS['_nt_die_status']       = null;
+        $GLOBALS['wp_filesystem']        = new NT_Test_WP_Filesystem_Spy();
+        unset($GLOBALS['_nt_test_now']);
 
         $_SERVER['HTTP_USER_AGENT'] = 'facebookexternalhit/1.1';
         $_SERVER['REQUEST_URI']     = '/some-page/';
         $_SERVER['REMOTE_ADDR']     = '127.0.0.1';
+        $_POST                      = [];
     }
 
     // ── UA detection ──────────────────────────────────────────────────────────
@@ -23,13 +29,25 @@ class ThrottleTest extends TestCase
     public function test_facebookexternalhit_detected(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
-        $this->assertTrue(nt_is_request_from_facebook());
+        $this->assertSame('facebookexternalhit', nt_is_request_from_facebook());
     }
 
     public function test_meta_externalagent_detected(): void
     {
         $_SERVER['HTTP_USER_AGENT'] = 'meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)';
-        $this->assertTrue(nt_is_request_from_facebook());
+        $this->assertSame('meta-externalagent', nt_is_request_from_facebook());
+    }
+
+    public function test_facebookexternalhit_detected_case_insensitive(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'FacebookExternalHit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+        $this->assertNotFalse(nt_is_request_from_facebook());
+    }
+
+    public function test_meta_externalagent_detected_case_insensitive(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'META-EXTERNALAGENT/1.1';
+        $this->assertNotFalse(nt_is_request_from_facebook());
     }
 
     public function test_googlebot_not_detected(): void
@@ -89,7 +107,7 @@ class ThrottleTest extends TestCase
     {
         nt_facebook_request_throttle();
 
-        $this->assertNotFalse(get_transient('nt_facebook_last_access_time'));
+        $this->assertNotFalse(get_transient('nt_fb_last_access_facebookexternalhit'));
     }
 
     public function test_second_hit_within_window_is_throttled(): void
@@ -97,14 +115,14 @@ class ThrottleTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/wp_die:429/');
 
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 5;
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
 
         nt_facebook_request_throttle();
     }
 
     public function test_throttled_response_sends_429_status(): void
     {
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 5;
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
 
         try {
             nt_facebook_request_throttle();
@@ -115,7 +133,7 @@ class ThrottleTest extends TestCase
 
     public function test_hit_after_window_expires_is_allowed(): void
     {
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 61;
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 61;
 
         nt_facebook_request_throttle();
 
@@ -124,7 +142,7 @@ class ThrottleTest extends TestCase
 
     public function test_image_request_bypasses_throttle_within_window(): void
     {
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 1;
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 1;
         $_SERVER['REQUEST_URI'] = '/wp-content/uploads/photo.jpg';
 
         nt_facebook_request_throttle();
@@ -166,7 +184,7 @@ class ThrottleTest extends TestCase
     {
         // Set duration to 30s; last hit was 20s ago — should throttle
         $GLOBALS['_nt_options']['nt_throttle_duration'] = '30';
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 20;
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 20;
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/wp_die:429/');
@@ -178,8 +196,92 @@ class ThrottleTest extends TestCase
     {
         // Set duration to 30s; last hit was 35s ago — should allow
         $GLOBALS['_nt_options']['nt_throttle_duration'] = '30';
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 35;
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 35;
 
+        nt_facebook_request_throttle();
+
+        $this->assertFalse($GLOBALS['_nt_die_called']);
+    }
+
+    // ── TASK-04: per-UA buckets + atomic acquire ──────────────────────────────
+
+    public function test_transient_stub_honors_ttl(): void
+    {
+        $GLOBALS['_nt_test_now'] = 1000.0;
+        set_transient('any_key', 'v', 60);
+        $this->assertSame('v', get_transient('any_key'));
+
+        $GLOBALS['_nt_test_now'] = 1061.0; // past expiry
+        $this->assertFalse(get_transient('any_key'));
+    }
+
+    public function test_detection_returns_matched_agent_string(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'facebookexternalhit/1.1';
+        $this->assertSame('facebookexternalhit', nt_is_request_from_facebook());
+    }
+
+    public function test_throttle_key_is_sanitized_per_agent(): void
+    {
+        // Custom UA substrings may contain spaces/parens — invalid as memcached keys.
+        $this->assertSame('nt_fb_last_access_foobar10', nt_throttle_transient_key('Foo Bar/1.0'));
+        $this->assertSame('nt_fb_last_access_metaexternalagent', nt_throttle_transient_key('meta-externalagent'));
+    }
+
+    public function test_hot_bucket_throttles_its_own_agent(): void
+    {
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/wp_die:429/');
+
+        nt_facebook_request_throttle();
+    }
+
+    public function test_per_ua_buckets_are_independent(): void
+    {
+        // FB bucket is hot — meta-externalagent must sail through on its OWN bucket.
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
+        $_SERVER['HTTP_USER_AGENT'] = 'meta-externalagent/1.1';
+
+        nt_facebook_request_throttle();
+
+        $this->assertFalse($GLOBALS['_nt_die_called']);
+        $this->assertArrayHasKey('nt_fb_last_access_metaexternalagent', $GLOBALS['_nt_transients']);
+    }
+
+    public function test_hit_allowed_after_bucket_ttl_expires(): void
+    {
+        // Value says "throttle" but the transient's TTL has lapsed — expiry wins.
+        $GLOBALS['_nt_test_now'] = 1000.0;
+        set_transient('nt_fb_last_access_facebookexternalhit', microtime(true) - 5, 61);
+        $GLOBALS['_nt_test_now'] = 1062.0;
+
+        nt_facebook_request_throttle();
+
+        $this->assertFalse($GLOBALS['_nt_die_called']);
+    }
+
+    public function test_ext_cache_path_uses_atomic_add(): void
+    {
+        $GLOBALS['_nt_ext_cache'] = true;
+
+        nt_facebook_request_throttle();
+        $this->assertFalse($GLOBALS['_nt_die_called']);
+        $this->assertArrayHasKey('transient:nt_fb_last_access_facebookexternalhit', $GLOBALS['_nt_cache']);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/wp_die:429/');
+        nt_facebook_request_throttle();
+    }
+
+    public function test_ext_cache_buckets_are_independent(): void
+    {
+        $GLOBALS['_nt_ext_cache'] = true;
+
+        nt_facebook_request_throttle(); // claims FB bucket
+
+        $_SERVER['HTTP_USER_AGENT'] = 'meta-externalagent/1.1';
         nt_facebook_request_throttle();
 
         $this->assertFalse($GLOBALS['_nt_die_called']);
@@ -204,9 +306,11 @@ class ThrottleTest extends TestCase
 
     public function test_cli_status_shows_log_counts(): void
     {
+        // TASK-08: allowed hits come from the counter option, not log rows — the log now
+        // holds only throttled entries.
+        update_option('nt_facebook_throttle_allowed_count', 1);
         update_option('nt_facebook_throttle_log', [
-            ['time' => 't1', 'status' => 'allowed',   'ip' => '', 'uri' => '', 'ua' => ''],
-            ['time' => 't2', 'status' => 'throttled',  'ip' => '', 'uri' => '', 'ua' => ''],
+            ['time' => 't2', 'status' => 'throttled', 'ip' => '', 'uri' => '', 'ua' => ''],
         ]);
         $cli = $this->fresh_cli();
         $cli->status();
@@ -216,10 +320,12 @@ class ThrottleTest extends TestCase
 
     public function test_cli_clear_removes_log(): void
     {
-        update_option('nt_facebook_throttle_log', [['time' => 't', 'status' => 'allowed', 'ip' => '', 'uri' => '', 'ua' => '']]);
+        update_option('nt_facebook_throttle_log', [['time' => 't', 'status' => 'throttled', 'ip' => '', 'uri' => '', 'ua' => '']]);
+        update_option('nt_facebook_throttle_allowed_count', 4);
         $cli = $this->fresh_cli();
         $cli->clear();
         $this->assertEmpty(get_option('nt_facebook_throttle_log', []));
+        $this->assertSame(0, (int) get_option('nt_facebook_throttle_allowed_count', 0));
         $this->assertStringContainsString('cleared', WP_CLI::$success[0]);
     }
 
@@ -256,18 +362,19 @@ class ThrottleTest extends TestCase
 
     // ── Logging ───────────────────────────────────────────────────────────────
 
-    public function test_allowed_hit_creates_log_entry(): void
+    public function test_allowed_hit_increments_allowed_counter(): void
     {
+        // TASK-08: allowed hits no longer append to the log (write amplification) — they
+        // increment a single counter option instead.
         nt_facebook_request_throttle();
 
-        $log = get_option('nt_facebook_throttle_log', []);
-        $this->assertCount(1, $log);
-        $this->assertSame('allowed', $log[0]['status']);
+        $this->assertSame(1, (int) get_option('nt_facebook_throttle_allowed_count', 0));
+        $this->assertCount(0, get_option('nt_facebook_throttle_log', []));
     }
 
     public function test_throttled_hit_creates_throttled_log_entry(): void
     {
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 5;
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
 
         try { nt_facebook_request_throttle(); } catch (\RuntimeException) {}
 
@@ -278,7 +385,10 @@ class ThrottleTest extends TestCase
 
     public function test_log_entry_contains_expected_fields(): void
     {
-        nt_facebook_request_throttle();
+        // Re-anchored on a throttled hit — allowed hits no longer produce log rows.
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
+
+        try { nt_facebook_request_throttle(); } catch (\RuntimeException) {}
 
         $entry = get_option('nt_facebook_throttle_log', [])[0];
         $this->assertArrayHasKey('time',   $entry);
@@ -290,12 +400,14 @@ class ThrottleTest extends TestCase
 
     public function test_log_is_newest_first(): void
     {
-        // First hit
-        nt_facebook_request_throttle();
-        // Second hit — after window
-        $GLOBALS['_nt_transients']['nt_facebook_last_access_time'] = microtime(true) - 61;
+        // Re-anchored on throttled hits — allowed hits no longer append to the log.
+        // First throttled hit.
+        $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
+        try { nt_facebook_request_throttle(); } catch (\RuntimeException) {}
+
+        // Second throttled hit — still within window.
         $_SERVER['REQUEST_URI'] = '/second/';
-        nt_facebook_request_throttle();
+        try { nt_facebook_request_throttle(); } catch (\RuntimeException) {}
 
         $log = get_option('nt_facebook_throttle_log', []);
         $this->assertSame('/second/', $log[0]['uri']);
@@ -315,6 +427,35 @@ class ThrottleTest extends TestCase
         $this->assertCount(100, $log);
     }
 
+    // ── TASK-08: allowed-hit counter coherence ─────────────────────────────────
+
+    public function test_admin_page_shows_allowed_hits_count(): void
+    {
+        update_option('nt_facebook_throttle_allowed_count', 7);
+
+        ob_start();
+        nt_render_log_page();
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('Allowed hits: 7', $output);
+    }
+
+    public function test_admin_clear_log_resets_allowed_counter(): void
+    {
+        update_option('nt_facebook_throttle_allowed_count', 5);
+        update_option('nt_facebook_throttle_log', [
+            ['time' => 't', 'status' => 'throttled', 'ip' => '', 'uri' => '', 'ua' => ''],
+        ]);
+        $_POST['nt_clear_log'] = '1';
+
+        ob_start();
+        nt_render_log_page();
+        ob_end_clean();
+
+        $this->assertSame(0, (int) get_option('nt_facebook_throttle_allowed_count', 0));
+        $this->assertEmpty(get_option('nt_facebook_throttle_log', []));
+    }
+
     // ── Update checker ────────────────────────────────────────────────────────
 
     private function setHttpResponse(int $code, string $body): void
@@ -325,10 +466,13 @@ class ThrottleTest extends TestCase
         ];
     }
 
+    // TASK-05: consolidated fetcher — single transient `nt_github_release_data`,
+    // zip_url optional (tag_name-only payloads still resolve a version).
+
     /** @test */
     public function test_update_checker_returns_latest_version_from_github(): void
     {
-        delete_transient('nt_github_latest_version');
+        delete_transient('nt_github_release_data');
         $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.9.9']));
 
         $result = nt_check_github_for_update();
@@ -339,7 +483,7 @@ class ThrottleTest extends TestCase
     /** @test */
     public function test_update_checker_strips_leading_v(): void
     {
-        delete_transient('nt_github_latest_version');
+        delete_transient('nt_github_release_data');
         $this->setHttpResponse(200, json_encode(['tag_name' => 'v2.9']));
 
         $this->assertSame('2.9', nt_check_github_for_update());
@@ -348,7 +492,7 @@ class ThrottleTest extends TestCase
     /** @test */
     public function test_update_checker_returns_false_on_http_error(): void
     {
-        delete_transient('nt_github_latest_version');
+        delete_transient('nt_github_release_data');
         $GLOBALS['_nt_http_response'] = new WP_Error('http_request_failed', 'timeout');
 
         $this->assertFalse(nt_check_github_for_update());
@@ -357,7 +501,7 @@ class ThrottleTest extends TestCase
     /** @test */
     public function test_update_checker_returns_false_on_non_200(): void
     {
-        delete_transient('nt_github_latest_version');
+        delete_transient('nt_github_release_data');
         $this->setHttpResponse(403, '{"message":"rate limited"}');
 
         $this->assertFalse(nt_check_github_for_update());
@@ -366,7 +510,7 @@ class ThrottleTest extends TestCase
     /** @test */
     public function test_update_checker_returns_false_on_missing_tag(): void
     {
-        delete_transient('nt_github_latest_version');
+        delete_transient('nt_github_release_data');
         $this->setHttpResponse(200, json_encode(['foo' => 'bar']));
 
         $this->assertFalse(nt_check_github_for_update());
@@ -375,18 +519,32 @@ class ThrottleTest extends TestCase
     /** @test */
     public function test_update_checker_uses_cached_transient(): void
     {
-        set_transient('nt_github_latest_version', '3.0.0', 3600);
+        set_transient('nt_github_release_data', ['version' => '3.0.0', 'zip_url' => ''], 3600);
         // HTTP stub would return something different — transient wins.
         $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.0']));
 
         $this->assertSame('3.0.0', nt_check_github_for_update());
-        delete_transient('nt_github_latest_version');
+        delete_transient('nt_github_release_data');
+    }
+
+    /** @test */
+    public function test_get_github_release_data_zip_url_optional(): void
+    {
+        // Tag-only payload (no zipball_url) must still resolve — zip_url becomes ''.
+        delete_transient('nt_github_release_data');
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.9.9']));
+
+        $data = nt_get_github_release_data();
+
+        $this->assertIsArray($data);
+        $this->assertSame('9.9.9', $data['version']);
+        $this->assertSame('', $data['zip_url']);
     }
 
     /** @test */
     public function test_update_notice_not_shown_when_up_to_date(): void
     {
-        delete_transient('nt_github_latest_version');
+        delete_transient('nt_github_release_data');
         // Return same version as plugin — no update available.
         $this->setHttpResponse(200, json_encode(['tag_name' => 'v' . NT_PLUGIN_VERSION]));
 
@@ -400,16 +558,43 @@ class ThrottleTest extends TestCase
     /** @test */
     public function test_update_notice_shown_when_newer_version_exists(): void
     {
-        delete_transient('nt_github_latest_version');
-        $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.9.9']));
+        // Minor bump — the generic notice owns this path (majors belong to the major notice).
+        delete_transient('nt_github_release_data');
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v3.2']));
 
         ob_start();
         nt_maybe_show_update_notice();
         $output = ob_get_clean();
 
-        $this->assertStringContainsString('9.9.9', $output);
+        $this->assertStringContainsString('3.2', $output);
         $this->assertStringContainsString('notice-warning', $output);
         $this->assertStringContainsString('releases/latest', $output);
+    }
+
+    /** @test */
+    public function test_update_notice_shown_even_when_zip_url_missing(): void
+    {
+        // Closes rev.1 critic-2 MINOR: tag_name-only payload must not yield zero banners.
+        delete_transient('nt_github_release_data');
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v3.2']));
+
+        ob_start();
+        nt_maybe_show_update_notice();
+        $output = ob_get_clean();
+
+        $this->assertStringContainsString('3.2', $output);
+    }
+
+    /** @test */
+    public function test_inject_plugin_update_skips_when_zip_url_empty(): void
+    {
+        delete_transient('nt_github_release_data');
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.9.9'])); // no zipball_url
+
+        $transient = (object) ['checked' => ['whatever/whatever.php' => NT_PLUGIN_VERSION]];
+        $result    = nt_inject_plugin_update($transient);
+
+        $this->assertEmpty((array) ($result->response ?? []));
     }
 
     // ── WP Update Integration ─────────────────────────────────────────────────
@@ -524,6 +709,101 @@ class ThrottleTest extends TestCase
         $output = ob_get_clean();
 
         $this->assertEmpty($output);
+    }
+
+    /** @test */
+    public function test_major_update_renders_single_notice(): void
+    {
+        // Both admin_notices callbacks fire on a major bump — exactly ONE banner must render.
+        $GLOBALS['_nt_http_response'] = [
+            'response' => ['code' => 200],
+            'body'     => json_encode([
+                'tag_name'    => 'v9.9.9',
+                'zipball_url' => 'https://example.com/zip',
+            ]),
+        ];
+
+        ob_start();
+        nt_maybe_show_update_notice();
+        nt_maybe_show_major_update_notice();
+        $output = ob_get_clean();
+
+        $this->assertSame(1, substr_count($output, 'notice-warning'));
+    }
+
+    // ── TASK-05: upgrader_source_selection rename filter ──────────────────────
+
+    /**
+     * Mirrors what the plugin computes internally (plugin_basename(__FILE__)) without
+     * hardcoding the checkout folder name — this repo's dir name varies by environment.
+     */
+    private function pluginBasename(): string
+    {
+        return plugin_basename(dirname(__DIR__) . '/facebook-request-throttle.php');
+    }
+
+    /** @test */
+    public function test_source_rename_moves_matching_plugin_to_current_folder_name(): void
+    {
+        $source       = '/tmp/wp-upgrade/nadimtuhin-Facebook-Request-Throttle-WordPress-Plugin-abc123/';
+        $install_dir  = dirname($this->pluginBasename());
+        $hook_extra   = ['plugin' => $this->pluginBasename()];
+
+        $result = nt_maybe_rename_update_source($source, '', null, $hook_extra);
+
+        $expected = trailingslashit('/tmp/wp-upgrade/' . $install_dir);
+        $this->assertSame($expected, $result);
+        $this->assertCount(1, $GLOBALS['wp_filesystem']->moves);
+        $this->assertSame($source, $GLOBALS['wp_filesystem']->moves[0]['from']);
+        $this->assertSame('/tmp/wp-upgrade/' . $install_dir, $GLOBALS['wp_filesystem']->moves[0]['to']);
+        $this->assertTrue($GLOBALS['wp_filesystem']->moves[0]['overwrite']);
+    }
+
+    /** @test */
+    public function test_source_rename_passes_through_other_plugin_sources(): void
+    {
+        $source     = '/tmp/wp-upgrade/some-other-plugin-xyz/';
+        $hook_extra = ['plugin' => 'some-other-plugin/some-other-plugin.php'];
+
+        $result = nt_maybe_rename_update_source($source, '', null, $hook_extra);
+
+        $this->assertSame($source, $result);
+        $this->assertEmpty($GLOBALS['wp_filesystem']->moves);
+    }
+
+    /** @test */
+    public function test_source_rename_passes_through_when_hook_extra_missing_plugin(): void
+    {
+        $source = '/tmp/wp-upgrade/whatever/';
+
+        $result = nt_maybe_rename_update_source($source, '', null, []);
+
+        $this->assertSame($source, $result);
+        $this->assertEmpty($GLOBALS['wp_filesystem']->moves);
+    }
+
+    /** @test */
+    public function test_source_rename_passes_through_wp_error(): void
+    {
+        $error      = new WP_Error('download_failed', 'nope');
+        $hook_extra = ['plugin' => $this->pluginBasename()];
+
+        $result = nt_maybe_rename_update_source($error, '', null, $hook_extra);
+
+        $this->assertSame($error, $result);
+        $this->assertEmpty($GLOBALS['wp_filesystem']->moves);
+    }
+
+    /** @test */
+    public function test_source_rename_returns_wp_error_on_move_failure(): void
+    {
+        $GLOBALS['wp_filesystem']->moveReturn = false;
+        $source     = '/tmp/wp-upgrade/nadimtuhin-Facebook-Request-Throttle-WordPress-Plugin-abc123/';
+        $hook_extra = ['plugin' => $this->pluginBasename()];
+
+        $result = nt_maybe_rename_update_source($source, '', null, $hook_extra);
+
+        $this->assertInstanceOf(WP_Error::class, $result);
     }
 
     /** @test */

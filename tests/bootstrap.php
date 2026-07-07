@@ -5,25 +5,61 @@
  */
 
 // Global state — reset per test via WPStubs::reset()
-$GLOBALS['_nt_transients'] = [];
-$GLOBALS['_nt_options']    = [];
-$GLOBALS['_nt_die_called'] = false;
-$GLOBALS['_nt_die_status'] = null;
+$GLOBALS['_nt_transients']       = [];
+$GLOBALS['_nt_transient_expiry'] = [];
+$GLOBALS['_nt_options']          = [];
+$GLOBALS['_nt_cache']            = [];
+$GLOBALS['_nt_ext_cache']        = false;
+$GLOBALS['_nt_die_called']       = false;
+$GLOBALS['_nt_die_status']       = null;
 
+// Fake clock for TTL checks — tests set $GLOBALS['_nt_test_now'] to control it.
+function nt_stub_now(): float
+{
+    return $GLOBALS['_nt_test_now'] ?? microtime(true);
+}
+
+// TTL-aware: direct $GLOBALS['_nt_transients'][$k] = $v writes have no expiry entry → never expire.
 function get_transient(string $k): mixed
 {
-    return $GLOBALS['_nt_transients'][$k] ?? false;
+    if (!array_key_exists($k, $GLOBALS['_nt_transients'])) {
+        return false;
+    }
+    $exp = $GLOBALS['_nt_transient_expiry'][$k] ?? null;
+    if ($exp !== null && nt_stub_now() >= $exp) {
+        unset($GLOBALS['_nt_transients'][$k], $GLOBALS['_nt_transient_expiry'][$k]);
+        return false;
+    }
+    return $GLOBALS['_nt_transients'][$k];
 }
 
 function set_transient(string $k, mixed $v, int $ttl): bool
 {
-    $GLOBALS['_nt_transients'][$k] = $v;
+    $GLOBALS['_nt_transients'][$k]       = $v;
+    $GLOBALS['_nt_transient_expiry'][$k] = $ttl > 0 ? nt_stub_now() + $ttl : null;
     return true;
 }
 
 function delete_transient(string $k): bool
 {
-    unset($GLOBALS['_nt_transients'][$k]);
+    unset($GLOBALS['_nt_transients'][$k], $GLOBALS['_nt_transient_expiry'][$k]);
+    return true;
+}
+
+function wp_using_ext_object_cache(): bool
+{
+    return $GLOBALS['_nt_ext_cache'] ?? false;
+}
+
+// add-if-absent, like a real persistent object cache drop-in.
+function wp_cache_add(string $key, mixed $value, string $group = '', int $ttl = 0): bool
+{
+    $k     = $group . ':' . $key;
+    $entry = $GLOBALS['_nt_cache'][$k] ?? null;
+    if ($entry !== null && ($entry['exp'] === null || nt_stub_now() < $entry['exp'])) {
+        return false;
+    }
+    $GLOBALS['_nt_cache'][$k] = ['v' => $value, 'exp' => $ttl > 0 ? nt_stub_now() + $ttl : null];
     return true;
 }
 
@@ -67,6 +103,21 @@ function printf_esc(string $fmt, mixed ...$args): void { printf($fmt, ...$args);
 function wp_parse_url(string $url, int $component = -1): mixed { return parse_url($url, $component); }
 function wp_unslash(mixed $value): mixed { return is_string($value) ? stripslashes($value) : $value; }
 function sanitize_text_field(string $str): string { return trim(strip_tags($str)); }
+function trailingslashit(string $s): string { return rtrim($s, '/\\') . '/'; }
+
+// $wp_filesystem spy — records move() calls for the TASK-05 upgrader_source_selection filter.
+class NT_Test_WP_Filesystem_Spy
+{
+    public array $moves = [];
+    public bool $moveReturn = true;
+
+    public function move(string $from, string $to, bool $overwrite = false): bool
+    {
+        $this->moves[] = ['from' => $from, 'to' => $to, 'overwrite' => $overwrite];
+        return $this->moveReturn;
+    }
+}
+$GLOBALS['wp_filesystem'] = new NT_Test_WP_Filesystem_Spy();
 
 // WP-CLI stubs — only defined when tests opt-in via $GLOBALS['_nt_test_wpcli']
 if ( ! class_exists( 'WP_CLI' ) ) {
