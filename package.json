@@ -1,6 +1,6 @@
 {
   "name": "facebook-request-throttle",
-  "description": "WordPress plugin — limits Facebook/Meta crawler request frequency",
+  "description": "WordPress plugin that limits Facebook/Meta crawler request frequency",
   "private": true,
   "scripts": {
     "test":   "composer test",

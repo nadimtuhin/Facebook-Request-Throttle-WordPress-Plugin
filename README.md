@@ -4,150 +4,107 @@
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org/)
 [![CI](https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-3.0-orange)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.1-orange)](./CHANGELOG.md)
 
-> Rate-limit Facebook and Meta crawlers to protect your server from excessive scraping load.
+![Facebook Request Throttle](docs/images/banner.png)
 
-Facebook's web crawlers (`facebookexternalhit` and `meta-externalagent`) can hammer your server when a URL gets shared — especially on viral posts. This plugin throttles those requests to one per configured window and returns a proper `429 Too Many Requests` with a `Retry-After` header so the crawler backs off gracefully.
+A WordPress plugin that rate-limits Facebook's link-preview crawlers.
 
----
+When a URL is shared on Facebook, `facebookexternalhit` and `meta-externalagent` can request it dozens of times in a few seconds, and a viral post can keep that going for hours. This plugin lets one crawler request through per window (60 seconds by default) and answers the rest with `429 Too Many Requests` and a `Retry-After` header. Regular visitors never touch the throttle.
 
 ## Requirements
 
-| Requirement | Minimum | Recommended |
+| | Minimum | Tested |
 |---|---|---|
-| PHP | 7.4 (runtime) | 8.2 or 8.3 |
-| WordPress | 5.0 | 6.9 (latest) |
-| MySQL / MariaDB | 5.5.5 / 10.0 | 8.0 / 10.6 |
+| PHP | 7.4 | 8.1, 8.2, 8.3 (CI) |
+| WordPress | 5.0 | 6.9 |
 
-CI runs the test suite on PHP 8.1, 8.2 and 8.3 (PHPUnit 10 requires PHP 8.1+; the plugin itself runs on PHP 7.4+).
+The test suite needs PHP 8.1+ because of PHPUnit 10. The plugin itself runs on 7.4.
 
----
+## What it does
 
-## Features
-
-- **Throttles** `facebookexternalhit` and `meta-externalagent` user agents
-- **Returns** `429 Too Many Requests` with a `Retry-After` header
-- **Skips** image requests (jpg, jpeg, png, gif, webp) — Open Graph images always served
-- **Admin log** under Settings → FB Throttle Log — last 100 hits with timestamp, status, IP, URI, and user agent
-- **Dashboard-configurable** throttle duration — no code edits needed
-- **Backward compatible** — `define( 'FACEBOOK_REQUEST_THROTTLE', 120 )` in `wp-config.php` still works
-
----
-
-## Installation
-
-1. Clone or download into your plugins directory:
-   ```
-   wp-content/plugins/Facebook-Request-Throttle-WordPress-Plugin/
-   ```
-2. Activate via **Plugins → Installed Plugins** in the WordPress admin.
-3. Visit **Settings → FB Throttle Log** to set your throttle duration.
-
----
-
-## Configuration
-
-### Dashboard (recommended)
-
-Go to **Settings → FB Throttle Log** and set the throttle duration in seconds.
-Default is **60 seconds**. Changes take effect immediately — no code edits needed.
-
-### wp-config.php (advanced)
-
-```php
-define( 'FACEBOOK_REQUEST_THROTTLE', 120 ); // 2 minutes
-```
-
-The dashboard value takes priority over the constant. If neither is set, the plugin defaults to 60 seconds.
-
-### Backward compatibility
-
-Existing installs using `FACEBOOK_REQUEST_THROTTLE` in `wp-config.php` continue to work with zero changes.
-
----
+- Matches `facebookexternalhit` and `meta-externalagent` in the User-Agent, case-insensitively.
+- Gives each crawler its own throttle clock, so a burst from one doesn't block the other.
+- Returns `429` with `Retry-After` set to the configured window.
+- Lets image requests (jpg, jpeg, png, gif, webp) through, so Open Graph previews still render.
+- Logs the last 100 throttled requests (time, IP, URI, user agent) under **Settings → FB Throttle Log** and counts allowed hits.
+- Adds `wp fb-throttle` WP-CLI commands.
+- Updates from GitHub releases: minor versions auto-install, major versions wait for you to click Update.
+- Removes its options and transients on uninstall, on every site of a multisite network.
 
 ## How it works
 
+![First crawler request in each window gets 200, the rest get 429; image requests always pass](docs/images/throttle-window.png)
+
 ```
-Facebook crawler hits your site
-        │
-        ▼
-Is the User-Agent facebookexternalhit or meta-externalagent?
-        │
-   No ──┴── Yes
-   │         │
-   │         ▼
-   │   Is it an image request?
-   │         │
-   │    Yes ─┴─ No
-   │    │        │
-   │    │        ▼
-   │    │   Was the last hit within the throttle window?
-   │    │         │
-   │    │    Yes ─┴─ No
-   │    │    │        │
-   │    │    ▼        ▼
-   │    │  429 +    200 OK +
-   │    │  Retry-   update
-   │    │  After    timestamp
-   │    │
-   └────┴──→ Pass through
+request
+  │
+  ├─ User-Agent isn't a Facebook crawler ────────► pass through
+  ├─ image file (jpg/png/gif/webp) ──────────────► pass through
+  ├─ crawler's slot free for this window ────────► 200, start the window
+  └─ slot already taken ─────────────────────────► 429 + Retry-After
 ```
 
----
+With a persistent object cache (Redis, Memcached) the slot is claimed with an atomic `wp_cache_add`. Without one, the plugin falls back to a database transient.
 
-## Testing the plugin
+## Installation
 
-Use the included `testbot` script to simulate requests from both Facebook/Meta user agents:
+1. Download the [latest release](https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/latest) and unzip it into `wp-content/plugins/`, or clone the repo there.
+2. Activate it under **Plugins → Installed Plugins**.
+3. Optional: change the window under **Settings → FB Throttle Log**.
+
+## Configuration
+
+The default window is 60 seconds. Set it in any of these, highest priority first:
+
+1. **Dashboard:** Settings → FB Throttle Log. Accepts 1 to 86400 seconds and applies to the next request.
+2. **WP-CLI:** `wp fb-throttle duration 120` writes the same option as the dashboard.
+3. **wp-config.php:**
+
+   ```php
+   define( 'NT_FACEBOOK_REQUEST_THROTTLE', 120 );
+   ```
+
+   The older `FACEBOOK_REQUEST_THROTTLE` name still works.
+
+To throttle other crawlers, add User-Agent substrings to `$nt_user_agents_to_throttle` in `facebook-request-throttle.php`.
+
+## WP-CLI
 
 ```bash
-./testbot https://yoursite.com
+wp fb-throttle status                         # window, allowed/throttled counts, last throttled hit
+wp fb-throttle log --limit=50 --format=json   # throttled-hit log
+wp fb-throttle clear                          # reset the log and the counter
+wp fb-throttle duration [<seconds>]           # read or set the window
 ```
 
-Or via environment variable:
+## Limitations
+
+- **User agents can be spoofed.** A fake `facebookexternalhit` request uses the real crawler's slot and can push it into 429s. Facebook crawls from many IPs, so per-IP buckets would defeat the point. Block abusive IPs at the firewall.
+- **Without a persistent object cache** the database path is read-then-write, so truly concurrent hits can let one extra request through per window.
+- **With several web servers** each node keeps its own clock unless they share an object cache.
+
+## Trying it against a site
+
+`testbot` sends five requests per crawler User-Agent, one second apart:
 
 ```bash
-TESTBOT_URL=https://yoursite.com ./testbot
+./testbot https://example.com
+TESTBOT_URL=https://example.com ./testbot
 ```
 
----
+On a fresh 60-second window, expect one `200` and then four `429`s for each User-Agent.
 
 ## Development
 
 ```bash
 composer install
-composer test        # PHPUnit (requires PHP 8.1+)
+composer test          # PHPUnit
+vendor/bin/phpcs       # WordPress coding standards
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
----
-
-## Changelog
-
-### 2.9
-- GitHub update checker: admin notice when a newer release exists on GitHub
-- `NT_PLUGIN_VERSION` constant for version comparisons
-- Tested up to WordPress 6.9
-- 44 PHPUnit tests
-
-### 2.6
-- Dashboard setting for throttle duration (Settings → FB Throttle Log)
-- `Retry-After` header reflects configured duration dynamically
-- 29 PHPUnit tests covering all throttle and sanitize logic
-
-### 2.5
-- Added `meta-externalagent` support (Meta's newer crawler UA)
-- Configurable user agent list via `$nt_user_agents_to_throttle`
-- WordPress coding standards applied throughout
-
-### 2.4
-- Admin log page with clear button and nonce protection
-- Log capped at 100 entries, newest first
-
----
+CI runs both on PHP 8.1, 8.2 and 8.3. Release steps are in [CONTRIBUTING.md](CONTRIBUTING.md), version history in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-GPL-2.0-or-later — see [LICENSE](LICENSE).
+GPL-2.0-or-later. See [LICENSE](LICENSE).

@@ -8,7 +8,7 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
     define('WP_UNINSTALL_PLUGIN', true);
 }
 
-// ── Multisite stubs (self-contained to this test file, per TASK-06 rulings) ─
+// ── Multisite stubs (local to this file) ─────────────────────────────────
 if (!function_exists('is_multisite')) {
     function is_multisite(): bool
     {

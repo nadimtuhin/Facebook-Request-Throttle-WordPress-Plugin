@@ -33,7 +33,7 @@ if ( ! defined( 'NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT' ) ) {
 	define( 'NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT', defined( 'FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT' ) ? FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT : 100 );
 }
 
-// Backward-compat aliases — ensure both names always exist for any code referencing the old names.
+// Legacy aliases so code using the old unprefixed names keeps working.
 if ( ! defined( 'FACEBOOK_REQUEST_THROTTLE' ) ) {
 	define( 'FACEBOOK_REQUEST_THROTTLE', NT_FACEBOOK_REQUEST_THROTTLE );
 }
@@ -148,14 +148,14 @@ function nt_acquire_throttle_slot( $agent, $current_time ) {
 	$throttle = nt_get_throttle_duration();
 
 	if ( function_exists( 'wp_using_ext_object_cache' ) && wp_using_ext_object_cache() ) {
-		// ponytail: atomicity relies on the drop-in implementing wp_cache_add as true
-		// add-if-absent (Redis NX / memcached add); window = ceil(duration) via key TTL
-		// here vs float timestamp math on the DB path below.
+		// Atomic only if the drop-in implements wp_cache_add as add-if-absent
+		// (Redis NX, memcached add). The window here is ceil(duration) via key TTL;
+		// the DB path below uses float timestamps.
 		return wp_cache_add( nt_throttle_transient_key( $agent ), $current_time, 'transient', (int) ceil( $throttle ) );
 	}
 
-	// ponytail: DB transients are read-then-write — a narrow race can double-allow one
-	// request per window under true concurrency. Upgrade path = persistent object cache.
+	// DB transients are read-then-write, so concurrent hits can let one extra request
+	// through per window. A persistent object cache closes the gap.
 	$last_access_time = nt_get_last_access_time( $agent );
 	if ( $last_access_time && ( $current_time - $last_access_time < $throttle ) ) {
 		return false;
@@ -167,11 +167,9 @@ function nt_acquire_throttle_slot( $agent, $current_time ) {
 /**
  * Record a crawler hit.
  *
- * Throttled hits append a full entry to the admin-visible log (capped at LOG_LIMIT
- * entries) — they're the signal an admin needs to see. Allowed hits are the volume;
- * logging every one meant a full-array update_option() per hit, so instead they just
- * bump a single counter option (autoload off). This trades away per-allowed-hit
- * ip/uri/ua detail for a much cheaper write.
+ * Throttled hits get a full entry in the admin log (capped at LOG_LIMIT). Allowed
+ * hits only bump a counter option (autoload off): logging each one would rewrite the
+ * whole log array on every crawler request.
  *
  * @param string $status 'allowed' or 'throttled'.
  */
@@ -217,7 +215,7 @@ function nt_facebook_request_throttle( $agent = null ) {
 	if ( ! nt_acquire_throttle_slot( $agent, microtime( true ) ) ) {
 		nt_log( 'throttled' );
 		nt_send_throttle_response();
-		// nt_send_throttle_response() calls wp_die() — execution stops here.
+		// nt_send_throttle_response() calls wp_die(), so execution stops here.
 	}
 
 	nt_log( 'allowed' );
@@ -322,7 +320,7 @@ function nt_render_log_page() {
 							class="small-text"
 						>
 						<p class="description">
-							<?php esc_html_e( 'Minimum seconds between allowed hits from the same crawler. Default: 60. You can also define NT_FACEBOOK_REQUEST_THROTTLE (or the legacy FACEBOOK_REQUEST_THROTTLE) in wp-config.php — the dashboard value takes priority.', 'facebook-request-throttle' ); ?>
+							<?php esc_html_e( 'Minimum seconds between allowed hits from the same crawler. Default: 60. You can also define NT_FACEBOOK_REQUEST_THROTTLE (or the legacy FACEBOOK_REQUEST_THROTTLE) in wp-config.php. The dashboard value takes priority.', 'facebook-request-throttle' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -344,7 +342,7 @@ function nt_render_log_page() {
 			<?php
 			printf(
 				/* translators: %d: max number of log entries */
-				esc_html__( 'Shows the last %d throttled (429) requests from Facebook crawlers (facebookexternalhit / meta-externalagent). Allowed hits are counted above but no longer logged individually.', 'facebook-request-throttle' ),
+				esc_html__( 'Shows the last %d throttled (429) requests from Facebook crawlers (facebookexternalhit / meta-externalagent). Allowed hits are counted above, not logged individually.', 'facebook-request-throttle' ),
 				(int) NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT
 			);
 			?>
@@ -403,7 +401,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	/**
 	 * WP-CLI commands for Facebook Request Throttle.
 	 *
-	 * Single-file plugin — class intentionally co-located with functions.
+	 * Single-file plugin, so the class lives next to the functions.
 	 *
 	 * @package FacebookRequestThrottle
 	 */
@@ -532,9 +530,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 /**
  * Check GitHub releases for a newer version of this plugin.
  *
- * Thin wrapper over nt_get_github_release_data() — both the version-only check and the
- * full release data (version + zip URL) now share a single fetch and transient, so they
- * can no longer disagree about what the latest release is.
+ * Thin wrapper over nt_get_github_release_data(), so the notice and the WP update
+ * injector read the same cached release.
  *
  * @return string|false Latest version tag (e.g. "2.9") or false on failure.
  */
@@ -560,7 +557,7 @@ function nt_maybe_show_update_notice() {
 		return;
 	}
 
-	// Major bumps are announced by nt_maybe_show_major_update_notice() — stand down to avoid a double banner.
+	// nt_maybe_show_major_update_notice() handles major bumps; skip to avoid two banners.
 	if ( nt_is_major_upgrade( NT_PLUGIN_VERSION, $latest ) ) {
 		return;
 	}
@@ -584,9 +581,8 @@ add_action( 'admin_notices', 'nt_maybe_show_major_update_notice' );
  * Fetch release data from GitHub (tag_name; zipball_url when available).
  *
  * Single unauthenticated call to the GitHub API, cached 12 hours via one transient.
- * `zip_url` is optional — a release payload with only `tag_name` still resolves a
- * version so notices/version checks keep working; callers that need the zip (the WP
- * update injector) must check `zip_url` themselves before using it as a package.
+ * `zip_url` may be empty: a payload with only `tag_name` still yields a version for
+ * the notices. Callers that install the package must check `zip_url` first.
  *
  * @return array{version: string, zip_url: string}|false
  */
@@ -626,10 +622,9 @@ function nt_get_github_release_data() {
  * Rename the extracted GitHub-zip source folder to the currently installed plugin's
  * folder name before WP installs it.
  *
- * GitHub zipballs extract to `<owner>-<repo>-<sha>/`, not the installed plugin slug —
- * without this, WP would treat the update as a NEW plugin and deactivate the old one.
- * The target folder name is read from the CURRENT install (not hardcoded) so this also
- * works correctly on non-canonically-named installs.
+ * GitHub zipballs extract to `<owner>-<repo>-<sha>/`. Without the rename, WP installs
+ * the update as a separate plugin and deactivates this one. The folder name comes from
+ * the current install, so renamed installs work too.
  *
  * @param string|WP_Error $source        Path to the upgrade package source.
  * @param string          $remote_source Path to the upgrade package remote source.
@@ -718,7 +713,6 @@ add_filter( 'pre_set_site_transient_update_plugins', 'nt_inject_plugin_update' )
  */
 function nt_auto_update_policy( $update, $item ) {
 	if ( isset( $item->slug ) && 'facebook-request-throttle' === $item->slug ) {
-		// Auto-update minors; block auto-update for majors (notice will prompt user).
 		return ! nt_is_major_upgrade( NT_PLUGIN_VERSION, $item->new_version );
 	}
 	return $update;
@@ -727,7 +721,6 @@ add_filter( 'auto_update_plugin', 'nt_auto_update_policy', 10, 2 );
 
 /**
  * Show admin notice only for major upgrades (minors auto-update silently).
- * Replaces the blanket notice from before.
  */
 function nt_maybe_show_major_update_notice() {
 	if ( ! current_user_can( 'update_plugins' ) ) {
@@ -743,7 +736,6 @@ function nt_maybe_show_major_update_notice() {
 		return;
 	}
 
-	// Only show notice for major bumps — minors auto-update silently.
 	if ( ! nt_is_major_upgrade( NT_PLUGIN_VERSION, $release['version'] ) ) {
 		return;
 	}
@@ -754,7 +746,7 @@ function nt_maybe_show_major_update_notice() {
 		esc_html__( 'Facebook Request Throttle:', 'facebook-request-throttle' ),
 		sprintf(
 			/* translators: %s: new version number */
-			esc_html__( 'Major update %s is available — tap Update in the Plugins dashboard.', 'facebook-request-throttle' ),
+			esc_html__( 'Major update %s is available. Click Update on the Plugins screen.', 'facebook-request-throttle' ),
 			esc_html( $release['version'] )
 		),
 		esc_url( $url ),

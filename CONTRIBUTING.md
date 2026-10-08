@@ -3,11 +3,11 @@
 ## Local Dev Setup
 
 ```bash
-git clone https://github.com/your-org/Facebook-Request-Throttle-WordPress-Plugin.git
+git clone https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin.git
 cd Facebook-Request-Throttle-WordPress-Plugin
 ```
 
-Requirements: PHP 7.4+, [Composer](https://getcomposer.org/)
+Requirements: PHP 8.1+ (for PHPUnit 10) and [Composer](https://getcomposer.org/)
 
 ```bash
 composer install
@@ -16,15 +16,14 @@ composer test
 
 ## Coding Standards
 
-- Follow **PSR-12**.
-- Match the style of existing code — formatting, naming, docblock conventions.
-- Run `composer lint` (if available) before committing.
+- The plugin file follows the WordPress coding standard. Run `vendor/bin/phpcs` before committing; `vendor/bin/phpcbf` fixes most issues.
+- Tests use plain PHPUnit with WordPress stubs in `tests/bootstrap.php`. No WordPress install needed.
 
 ## Submitting a Pull Request
 
 1. Fork the repo and create a feature branch: `git checkout -b feat/my-change`
-2. Make your changes and add/update tests.
-3. Ensure `composer test` passes locally.
+2. Make your change and add or update tests.
+3. Run `composer test` and `vendor/bin/phpcs`.
 4. Squash commits to a single logical commit before opening the PR.
 5. Open a PR against `main` with a clear description of the change.
 
@@ -51,9 +50,9 @@ Releases are tagged on `main`. Only maintainers with push access can publish rel
 
 1. **Bump the version** in `facebook-request-throttle.php` (plugin header `Version:` field).
 
-2. **Update `CHANGELOG.md`** — add a new `## [X.Y]` section at the top following the existing format. Include Added / Changed / Fixed / Removed / Upgrade Notice as needed.
+2. **Update `CHANGELOG.md`:** add a new `## [X.Y]` section at the top following the existing format. Include Added / Changed / Fixed / Removed / Upgrade Notice as needed.
 
-3. **Update `readme.txt`** — add an entry under `== Changelog ==` and update `== Upgrade Notice ==`.
+3. **Update `readme.txt`:** add an entry under `== Changelog ==` and update `== Upgrade Notice ==`.
 
 4. **Commit directly to `main`** (or merge a `release/vX.Y` branch):
    ```
@@ -70,7 +69,7 @@ Releases are tagged on `main`. Only maintainers with push access can publish rel
 6. **Create the GitHub release**:
    ```
    gh release create vX.Y \
-     --title "vX.Y — Short description" \
+     --title "vX.Y: short description" \
      --latest \
      --notes "Copy the CHANGELOG section here"
    ```
@@ -83,5 +82,5 @@ Releases are tagged on `main`. Only maintainers with push access can publish rel
 | New feature, backward-compatible | 2.8 → 2.9 |
 | Breaking change | 2.x → 3.0 |
 
-Releases follow [Keep a Changelog](https://keepachangelog.com) and [Semantic Versioning](https://semver.org).
+The changelog follows [Keep a Changelog](https://keepachangelog.com). The updater auto-installs minor bumps and holds major bumps for manual approval, so only use a major bump for breaking changes.
 

@@ -203,7 +203,7 @@ class ThrottleTest extends TestCase
         $this->assertFalse($GLOBALS['_nt_die_called']);
     }
 
-    // ── TASK-04: per-UA buckets + atomic acquire ──────────────────────────────
+    // ── Per-UA buckets + atomic acquire ─────────────────────────────────────
 
     public function test_transient_stub_honors_ttl(): void
     {
@@ -306,8 +306,7 @@ class ThrottleTest extends TestCase
 
     public function test_cli_status_shows_log_counts(): void
     {
-        // TASK-08: allowed hits come from the counter option, not log rows — the log now
-        // holds only throttled entries.
+        // Allowed hits come from the counter option; the log holds only throttled entries.
         update_option('nt_facebook_throttle_allowed_count', 1);
         update_option('nt_facebook_throttle_log', [
             ['time' => 't2', 'status' => 'throttled', 'ip' => '', 'uri' => '', 'ua' => ''],
@@ -364,8 +363,7 @@ class ThrottleTest extends TestCase
 
     public function test_allowed_hit_increments_allowed_counter(): void
     {
-        // TASK-08: allowed hits no longer append to the log (write amplification) — they
-        // increment a single counter option instead.
+        // Allowed hits increment a counter option instead of appending to the log.
         nt_facebook_request_throttle();
 
         $this->assertSame(1, (int) get_option('nt_facebook_throttle_allowed_count', 0));
@@ -385,7 +383,7 @@ class ThrottleTest extends TestCase
 
     public function test_log_entry_contains_expected_fields(): void
     {
-        // Re-anchored on a throttled hit — allowed hits no longer produce log rows.
+        // Allowed hits don't produce log rows, so anchor on a throttled hit.
         $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
 
         try { nt_facebook_request_throttle(); } catch (\RuntimeException) {}
@@ -400,7 +398,7 @@ class ThrottleTest extends TestCase
 
     public function test_log_is_newest_first(): void
     {
-        // Re-anchored on throttled hits — allowed hits no longer append to the log.
+        // Allowed hits don't append to the log, so anchor on throttled hits.
         // First throttled hit.
         $GLOBALS['_nt_transients']['nt_fb_last_access_facebookexternalhit'] = microtime(true) - 5;
         try { nt_facebook_request_throttle(); } catch (\RuntimeException) {}
@@ -427,7 +425,7 @@ class ThrottleTest extends TestCase
         $this->assertCount(100, $log);
     }
 
-    // ── TASK-08: allowed-hit counter coherence ─────────────────────────────────
+    // ── Allowed-hit counter ───────────────────────────────────────────────────
 
     public function test_admin_page_shows_allowed_hits_count(): void
     {
@@ -466,8 +464,8 @@ class ThrottleTest extends TestCase
         ];
     }
 
-    // TASK-05: consolidated fetcher — single transient `nt_github_release_data`,
-    // zip_url optional (tag_name-only payloads still resolve a version).
+    // One fetcher, one transient (`nt_github_release_data`). zip_url is optional:
+    // tag_name-only payloads still resolve a version.
 
     /** @test */
     public function test_update_checker_returns_latest_version_from_github(): void
@@ -731,7 +729,7 @@ class ThrottleTest extends TestCase
         $this->assertSame(1, substr_count($output, 'notice-warning'));
     }
 
-    // ── TASK-05: upgrader_source_selection rename filter ──────────────────────
+    // ── upgrader_source_selection rename filter ───────────────────────────────
 
     /**
      * Mirrors what the plugin computes internally (plugin_basename(__FILE__)) without

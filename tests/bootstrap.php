@@ -4,7 +4,7 @@
  * Loaded once by PHPUnit before any test class.
  */
 
-// Global state — reset per test via WPStubs::reset()
+// Global state, reset per test via WPStubs::reset()
 $GLOBALS['_nt_transients']       = [];
 $GLOBALS['_nt_transient_expiry'] = [];
 $GLOBALS['_nt_options']          = [];
@@ -13,7 +13,7 @@ $GLOBALS['_nt_ext_cache']        = false;
 $GLOBALS['_nt_die_called']       = false;
 $GLOBALS['_nt_die_status']       = null;
 
-// Fake clock for TTL checks — tests set $GLOBALS['_nt_test_now'] to control it.
+// Fake clock for TTL checks: tests set $GLOBALS['_nt_test_now'] to control it.
 function nt_stub_now(): float
 {
     return $GLOBALS['_nt_test_now'] ?? microtime(true);
@@ -105,7 +105,7 @@ function wp_unslash(mixed $value): mixed { return is_string($value) ? stripslash
 function sanitize_text_field(string $str): string { return trim(strip_tags($str)); }
 function trailingslashit(string $s): string { return rtrim($s, '/\\') . '/'; }
 
-// $wp_filesystem spy — records move() calls for the TASK-05 upgrader_source_selection filter.
+// $wp_filesystem spy — records move() calls for the upgrader_source_selection filter.
 class NT_Test_WP_Filesystem_Spy
 {
     public array $moves = [];
@@ -119,7 +119,7 @@ class NT_Test_WP_Filesystem_Spy
 }
 $GLOBALS['wp_filesystem'] = new NT_Test_WP_Filesystem_Spy();
 
-// WP-CLI stubs — only defined when tests opt-in via $GLOBALS['_nt_test_wpcli']
+// WP-CLI stubs, only defined when tests opt-in via $GLOBALS['_nt_test_wpcli']
 if ( ! class_exists( 'WP_CLI' ) ) {
 	class WP_CLI {
 		public static array $lines   = [];
@@ -152,7 +152,7 @@ if (!defined('HOUR_IN_SECONDS')) {
     define('HOUR_IN_SECONDS', 3600);
 }
 
-// HTTP stubs — tests override $GLOBALS['_nt_http_response'] to control the response.
+// HTTP stubs: tests override $GLOBALS['_nt_http_response'] to control the response.
 function wp_remote_get(string $url, array $args = []): array|WP_Error
 {
     return $GLOBALS['_nt_http_response'] ?? new WP_Error('http_request_failed', 'No stub set');
