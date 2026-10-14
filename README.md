@@ -1,4 +1,82 @@
+<div align="center">
+
 # Facebook Request Throttle
+
+![Facebook Request Throttle: slow down Facebook's link-preview crawlers](https://raw.githubusercontent.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/main/docs/images/hero.svg)
+
+**Facebook's crawler asks again and again.** Dozens of requests in a few seconds, for one shared link.
+
+`WordPress 5.0+` `PHP 7.4+` [`GPL-2.0`](LICENSE) [`★ 25`](https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin)
+
+</div>
+
+<br>
+
+When someone shares your URL on Facebook, `facebookexternalhit` and `meta-externalagent` can hit it dozens of times in seconds. A viral post keeps that going for hours. This plugin lets one crawler request through per window and tells the rest to wait. Regular visitors never touch the throttle.
+
+<br>
+
+![Get started](https://raw.githubusercontent.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/main/docs/images/h-start.svg)
+
+**1. Download the plugin.** Get the [latest release](https://github.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/releases/latest) and unzip it into `wp-content/plugins/`.
+
+**2. Activate it.** In WordPress, open **Plugins → Installed Plugins** and click Activate.
+
+**3. Check that it works.** From a copy of this repo, run:
+
+```bash
+./testbot https://your-site.com
+```
+
+Use your own site's URL. On a fresh 60-second window you see one `200` and then four `429`s for each crawler. Want a different window? Go to **Settings → FB Throttle Log**.
+
+<br>
+
+![How it works](https://raw.githubusercontent.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/main/docs/images/h-how.svg)
+
+**One crawler request gets through per window.** The window is 60 seconds by default. The rest get `429 Too Many Requests` with a `Retry-After` header.
+
+**Everything else passes.** Real visitors and image files (jpg, png, gif, webp) are never throttled, so previews can still load images.
+
+<br>
+
+![Need help](https://raw.githubusercontent.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/main/docs/images/h-help.svg)
+
+<details>
+<summary>Will it block my real visitors?</summary>
+
+No. It only looks at the User-Agent of Facebook's two crawlers. Everyone else passes straight through.
+
+</details>
+
+<details>
+<summary>It does not look like it is working</summary>
+
+Run `./testbot https://your-site.com` and read the status codes. The plugin lists the last 100 throttled requests under **Settings → FB Throttle Log**. If it is empty, no crawler has been throttled yet. See [Limitations](#limitations) for cases where the throttle can miss a hit.
+
+</details>
+
+<details>
+<summary>How do I remove it?</summary>
+
+Deactivate and delete it under **Plugins**. On uninstall it removes its options, on every site of a multisite network. Throttle transients expire on their own.
+
+</details>
+
+<details>
+<summary>The throttle does not seem to see the crawlers</summary>
+
+If a full-page cache (WP Super Cache, Cloudflare) serves the page, crawlers never reach PHP and the throttle does not see them.
+
+</details>
+
+<br>
+
+![For developers](https://raw.githubusercontent.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/main/docs/images/h-dev.svg)
+
+Everything below is reference. You don't need it to get started.
+
+[Requirements](#requirements) · [What it does](#what-it-does) · [Configuration](#configuration) · [WP-CLI](#wp-cli) · [Limitations](#limitations) · [Development](#development)
 
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white)](https://www.php.net/)
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org/)
@@ -6,7 +84,7 @@
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](./LICENSE)
 [![Version](https://img.shields.io/badge/version-3.1-orange)](./CHANGELOG.md)
 
-![Facebook Request Throttle](docs/images/banner.png)
+![Facebook Request Throttle](https://raw.githubusercontent.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/main/docs/images/banner.png)
 
 A WordPress plugin that rate-limits Facebook's link-preview crawlers.
 
@@ -30,11 +108,11 @@ The test suite needs PHP 8.1+ because of PHPUnit 10. The plugin itself runs on 7
 - Logs the last 100 throttled requests (time, IP, URI, user agent) under **Settings → FB Throttle Log** and counts allowed hits.
 - Adds `wp fb-throttle` WP-CLI commands.
 - Updates from GitHub releases: minor versions auto-install, major versions wait for you to click Update.
-- Removes its options and transients on uninstall, on every site of a multisite network.
+- Removes its options on uninstall, on every site of a multisite network. Throttle transients expire on their own.
 
 ## How it works
 
-![First crawler request in each window gets 200, the rest get 429; image requests always pass](docs/images/throttle-window.png)
+![First crawler request in each window gets 200, the rest get 429; image requests always pass](https://raw.githubusercontent.com/nadimtuhin/Facebook-Request-Throttle-WordPress-Plugin/main/docs/images/throttle-window.png)
 
 ```
 request

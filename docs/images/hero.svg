@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+  <rect width="1200" height="300" fill="#f2f1ec"/>
+  <g font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace">
+    <text x="56" y="70" font-size="18" font-weight="700" fill="#d63a2f" letter-spacing="2">WORDPRESS PLUGIN</text>
+    <text x="56" y="160" font-size="64" font-weight="700" fill="#111111">FB Request Throttle</text>
+    <rect x="56" y="186" width="120" height="7" fill="#d63a2f"/>
+    <text x="56" y="240" font-size="24" fill="#111111">Slow down Facebook's link-preview crawlers</text>
+  </g>
+  
+</svg>

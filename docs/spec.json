@@ -1,0 +1,2 @@
+{ "banners": { "h-start": "GET STARTED", "h-how": "HOW IT WORKS", "h-help": "NEED HELP", "h-dev": "FOR DEVELOPERS" },
+  "hero": { "kicker": "WORDPRESS PLUGIN", "title": "FB Request Throttle", "tagline": "Slow down Facebook's link-preview crawlers" } }

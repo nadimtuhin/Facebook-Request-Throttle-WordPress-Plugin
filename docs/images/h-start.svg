@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="72" viewBox="0 0 1280 72">
+  <rect width="1280" height="72" fill="#f2f1ec"/>
+  <rect x="0" y="22" width="10" height="28" fill="#d63a2f"/>
+  <text x="30" y="47" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="28" font-weight="700" fill="#111111" textLength="242" lengthAdjust="spacingAndGlyphs">GET STARTED</text>
+  <line x1="304" y1="36" x2="1280" y2="36" stroke="#111111" stroke-width="2"/>
+</svg>
