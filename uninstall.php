@@ -21,6 +21,9 @@ function nt_facebook_throttle_uninstall_site() {
 	delete_option( 'nt_facebook_throttle_log' );
 	delete_option( 'nt_facebook_throttle_allowed_count' );
 
+	// Per-crawler throttle buckets (see nt_throttle_transient_key()), plus the pre-3.1 shared key.
+	delete_transient( 'nt_fb_last_access_metaexternalagent' );
+	delete_transient( 'nt_fb_last_access_facebookexternalhit' );
 	delete_transient( 'nt_facebook_last_access_time' );
 	delete_transient( 'nt_github_latest_version' );
 	delete_transient( 'nt_github_release_data' );
