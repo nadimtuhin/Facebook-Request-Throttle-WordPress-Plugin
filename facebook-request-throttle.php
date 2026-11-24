@@ -94,7 +94,8 @@ function nt_is_request_from_facebook() {
  * @return bool
  */
 function nt_is_image_request() {
-	$request_path   = wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '', PHP_URL_PATH );
+	// wp_parse_url() returns null for a URI with no path (e.g. "?a=1"); pathinfo(null) is deprecated in PHP 8.1.
+	$request_path   = (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '', PHP_URL_PATH );
 	$file_extension = strtolower( pathinfo( $request_path, PATHINFO_EXTENSION ) );
 	return in_array( $file_extension, array( 'jpg', 'jpeg', 'png', 'gif', 'webp' ), true );
 }
@@ -222,12 +223,23 @@ function nt_facebook_request_throttle( $agent = null ) {
 }
 
 /**
+ * Seconds for the Retry-After header: the window rounded up, never 0.
+ *
+ * A sub-second NT_FACEBOOK_REQUEST_THROTTLE would otherwise send "Retry-After: 0",
+ * which tells the crawler to retry immediately.
+ *
+ * @return int
+ */
+function nt_retry_after_seconds() {
+	return max( 1, (int) ceil( nt_get_throttle_duration() ) );
+}
+
+/**
  * Send throttle response with appropriate headers.
  */
 function nt_send_throttle_response() {
-	$retry_after = (int) nt_get_throttle_duration();
 	status_header( 429 );
-	header( 'Retry-After: ' . $retry_after );
+	header( 'Retry-After: ' . nt_retry_after_seconds() );
 	wp_die(
 		'Too Many Requests',
 		'Too Many Requests',
@@ -516,6 +528,10 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 				return;
 			}
 
+			if ( ! is_numeric( $args[0] ) ) {
+				WP_CLI::error( 'Duration must be a number of seconds (1-86400).' );
+			}
+
 			$value = nt_sanitize_throttle_duration( $args[0] );
 			update_option( 'nt_throttle_duration', $value );
 			WP_CLI::success( 'Throttle duration set to ' . $value . 's.' );
@@ -589,7 +605,8 @@ add_action( 'admin_notices', 'nt_maybe_show_major_update_notice' );
 function nt_get_github_release_data() {
 	$cached = get_transient( 'nt_github_release_data' );
 	if ( false !== $cached ) {
-		return $cached;
+		// An empty array is a cached failure.
+		return empty( $cached['version'] ) ? false : $cached;
 	}
 
 	$response = wp_remote_get(
@@ -600,12 +617,17 @@ function nt_get_github_release_data() {
 		)
 	);
 
+	// Cache failures for an hour too: both admin notices call this on every admin
+	// page, and a rate-limited or unreachable GitHub would otherwise cost up to
+	// two 5s timeouts per page load.
 	if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+		set_transient( 'nt_github_release_data', array(), HOUR_IN_SECONDS );
 		return false;
 	}
 
 	$body = json_decode( wp_remote_retrieve_body( $response ), true );
 	if ( empty( $body['tag_name'] ) ) {
+		set_transient( 'nt_github_release_data', array(), HOUR_IN_SECONDS );
 		return false;
 	}
 

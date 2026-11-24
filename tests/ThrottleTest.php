@@ -824,4 +824,57 @@ class ThrottleTest extends TestCase
             (int) NT_FACEBOOK_REQUEST_THROTTLE_LOG_LIMIT
         );
     }
+
+    // ── Regression tests ──────────────────────────────────────────────────────
+
+    public function test_update_checker_caches_failure_so_admin_pages_do_not_refetch(): void
+    {
+        delete_transient('nt_github_release_data');
+        $this->setHttpResponse(403, '{"message":"rate limited"}');
+        $this->assertFalse(nt_get_github_release_data());
+
+        // GitHub recovers, but the failure stays cached for a while.
+        $this->setHttpResponse(200, json_encode(['tag_name' => 'v9.9.9']));
+        $this->assertFalse(nt_get_github_release_data());
+    }
+
+    public function test_cli_duration_rejects_non_numeric_value(): void
+    {
+        $cli = $this->fresh_cli();
+        update_option('nt_throttle_duration', 60);
+
+        $error = '';
+        try {
+            $cli->duration(['abc']);
+        } catch (\RuntimeException $e) {
+            $error = $e->getMessage();
+        }
+        $this->assertStringStartsWith('wp_cli_error:', $error);
+        $this->assertSame(60, (int) get_option('nt_throttle_duration'));
+    }
+
+    public function test_retry_after_is_at_least_one_second_for_sub_second_duration(): void
+    {
+        update_option('nt_throttle_duration', 0.5);
+        $this->assertSame(1, nt_retry_after_seconds());
+    }
+
+    public function test_retry_after_rounds_up_fractional_duration(): void
+    {
+        update_option('nt_throttle_duration', 1.5);
+        $this->assertSame(2, nt_retry_after_seconds());
+    }
+
+    public function test_image_check_handles_uri_without_path(): void
+    {
+        $_SERVER['REQUEST_URI'] = '?a=1';
+        set_error_handler(static function (int $no, string $msg): bool {
+            throw new \ErrorException($msg, 0, $no);
+        }, E_DEPRECATED);
+        try {
+            $this->assertFalse(nt_is_image_request());
+        } finally {
+            restore_error_handler();
+        }
+    }
 }
