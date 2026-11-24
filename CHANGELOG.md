@@ -5,6 +5,15 @@ Minor versions auto-install through the WordPress updater; major versions need a
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- Uninstall removes the per-crawler throttle transients (`nt_fb_last_access_*`), not only the pre-3.1 key
+- A failed GitHub release lookup is cached for an hour, so admin pages stop re-fetching while GitHub is rate-limited or down
+- `wp fb-throttle duration` rejects non-numeric input instead of silently setting 1s
+- `Retry-After` is rounded up and never 0 for sub-second throttle windows
+- No PHP 8.1 `pathinfo()` deprecation for request URIs without a path (e.g. `?a=1`)
+
 ## [3.1] - 2026-07-07
 
 ### Changed

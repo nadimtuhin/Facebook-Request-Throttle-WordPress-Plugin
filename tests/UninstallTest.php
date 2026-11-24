@@ -74,9 +74,11 @@ class UninstallTest extends TestCase
             'nt_facebook_throttle_allowed_count' => 10,
         ];
         $GLOBALS['_nt_transients'] = [
-            'nt_facebook_last_access_time' => 123,
-            'nt_github_latest_version'     => '1.0',
-            'nt_github_release_data'       => 'x',
+            'nt_facebook_last_access_time'          => 123,
+            'nt_fb_last_access_metaexternalagent'   => 1.0,
+            'nt_fb_last_access_facebookexternalhit' => 2.0,
+            'nt_github_latest_version'              => '1.0',
+            'nt_github_release_data'                => 'x',
         ];
 
         nt_facebook_throttle_uninstall_dispatch();

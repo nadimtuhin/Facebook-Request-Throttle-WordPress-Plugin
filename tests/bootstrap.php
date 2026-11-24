@@ -127,6 +127,7 @@ if ( ! class_exists( 'WP_CLI' ) ) {
 		public static function line( string $msg ): void    { self::$lines[]   = $msg; }
 		public static function success( string $msg ): void { self::$success[] = $msg; }
 		public static function add_command(): void {}
+		public static function error( string $msg ): never { throw new \RuntimeException( 'wp_cli_error:' . $msg ); }
 	}
 }
 if ( ! defined( 'WP_CLI' ) ) {
